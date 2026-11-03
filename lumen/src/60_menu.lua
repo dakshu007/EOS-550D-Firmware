@@ -103,7 +103,6 @@ local TABS =
         { "Advanced settings", "More display options." },
     }},
     { name = "Prefs", items = {
-        { "LUMEN Boot Logo",   "Show the LUMEN logo when the camera starts.", toggle = true },
         { "Image Review",      "QuickZoom and review options." },
         { "Arrow/SET shortcuts", "Assign arrow keys to your favorite settings." },
         { "Powersave in LiveView", "Dim or turn off the screen to save battery." },
@@ -140,7 +139,6 @@ local REAL_TAB =
 {
     ["LUMEN Quick"] = "Overlay", ["LUMEN Focus"] = "Focus", ["LUMEN Presets"] = "Shoot",
     ["LUMEN Astro"] = "Shoot", ["LUMEN Timelapse"] = "Shoot",
-    ["LUMEN Boot Logo"] = "Prefs",
 }
 
 local function real_tab(tab_name, item_name)

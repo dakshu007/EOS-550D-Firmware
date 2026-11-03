@@ -10,7 +10,7 @@ never modified. To go back to the stock camera, start it with a normal card.
 - **Based on:** Magic Lantern `ed3e7c0df` (`2025_release_01`), the build installed on the camera
 - **Design:** the LUMEN canvas, with all screens drawn at the native 720 × 480 resolution
 
-## Status: v0.3.3
+## Status: v0.3.4
 
 The full feature list, including the Canon settings for focus beeps and AF, is in **[FEATURES.md](FEATURES.md)**.
 
@@ -24,7 +24,7 @@ The full feature list, including the Canon settings for focus beeps and AF, is i
 | **Astro**: star-trail limit and 10× star focus | ✅ new |
 | Lua module and LUMEN scripts start automatically | ✅ new |
 | All Magic Lantern 550D features | ✅ unchanged |
-| **Boot logo at every power-on** (Prefs → LUMEN Boot Logo) | ✅ new |
+| Camera starts exactly like stock (no LUMEN boot logo) | ✅ |
 | **LUMEN Menu**: the design's menu layout (Prefs → LUMEN Menu) | ✅ new |
 | **Quick toggles** screen (Overlay → LUMEN Quick) | ✅ new |
 | **Timelapse status** (Shoot → LUMEN Timelapse) | ✅ new |
@@ -42,7 +42,7 @@ Every push is tested and built automatically by GitHub Actions:
 3. Check that the download is intact:
 
    ```bash
-   shasum -a 256 LUMEN-550D.109-0.3.3.zip
+   shasum -a 256 LUMEN-550D.109-0.3.4.zip
    ```
 
    Compare the result with the `.sha256` file. (It proves the file wasn't damaged in transit. It
@@ -83,7 +83,7 @@ and `ML/LOGS`.
    You'll find them under **Prefs → LUMEN Menu**, **Focus → LUMEN Focus**, **Overlay → LUMEN Quick**, **Shoot → LUMEN Presets**,
    **Shoot → LUMEN Astro** and **Shoot → LUMEN Timelapse**.
 
-### Upgrading from LUMEN 0.3.2 or older
+### Upgrading from LUMEN 0.3.2 or older (one time)
 
 Older versions used six separate scripts, which filled the camera's Lua memory. `rsync` never
 deletes, so remove the old scripts and their autorun flags once (card in the Mac):
