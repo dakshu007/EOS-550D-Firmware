@@ -1,4 +1,4 @@
-# LUMEN features (v0.2.0)
+# LUMEN features (v0.2.1)
 
 Everything LUMEN can do on the EOS 550D, where to find it, and what the camera's hardware can't do.
 
@@ -10,19 +10,29 @@ setting and **Q** opens a submenu.
 | Feature | Where | What it does |
 |---|---|---|
 | **Focus Chime** | Focus → LUMEN Focus | Plays a short tone when autofocus finishes in Live View. Choose Soft, Bright (default), Crystal or Classic. **Test Chime** plays it. |
-| **Auto AF** | Focus → LUMEN Focus | In Live View, refocuses every 2, 5 or 10 s while you're not recording. Off by default. |
+| **Auto AF** | Focus → LUMEN Focus | In Live View, refocuses every 2, 5 or 10 s while you're not recording. Always starts OFF and switches itself off after 10 minutes. |
 | **Presets** | Shoot → LUMEN Presets | One-tap setups: **Everyday, Portrait, Landscape, Cinema, Astro, Clean**. Pick one, then **Apply**. |
 | **Star Limit** | Shoot → LUMEN Astro | Shows the longest exposure before stars trail at your focal length (500, 400 or 300 rule, 1.6× crop) in the Live View info bar. |
-| **Star Focus** | Shoot → LUMEN Astro | Jumps Live View to 10× zoom for focusing on a star. |
+| **Star Focus** | Shoot → LUMEN Astro | Jumps Live View to 10× zoom for focusing on a star, and tells you if Canon refuses the zoom (then press the zoom button). |
 | **LUMEN theme** | everywhere | Dark menus, gray selection bar with an amber marker, amber accents and the LUMEN About screen. |
 
 Notes:
-- **Presets** change ISO, shutter speed and aperture only when the dial is on **M** (or in movie mode
-  with manual exposure). In other modes they change only the overlays. A message reports how many
-  settings were applied. Presets never start the intervalometer.
-- **Auto AF** works best with Canon's Live View AF method **Live mode** (see below). In **Quick mode**
-  the mirror flips every time. It suits still or slow subjects. The 550D can't track moving subjects
-  in Live View.
+- **Presets** change ISO, shutter speed and aperture only when the dial is on **M** (Cinema also works
+  in movie mode with manual exposure). In other modes they change only the overlays. A message reports
+  how many settings were applied. Presets change only overlays and movie helpers. They never touch
+  Canon custom functions (mirror lockup, bracketing) and never start the intervalometer.
+- **Auto AF** safety rules:
+  - It runs only when the Canon Live View AF method is **Live mode** or **Face detection**, and never
+    in **Quick mode**, where the mirror would flip every time.
+  - If the menu shows a warning, the AF method isn't known yet. Change Canon's Live View AF mode to
+    another setting and back to **Live mode** once.
+  - It never runs while recording, with the menu open, with the lens on MF, or outside Live View.
+  - It always starts OFF after power-on and switches itself off after 10 minutes. This saves the
+    battery, because it keeps the camera from sleeping.
+  - It suits still or slow subjects. The 550D can't track moving subjects in Live View.
+  - If you use **back-button AF** (Canon custom function), Magic Lantern briefly changes that custom
+    function during each autofocus and restores it afterwards. If the battery is pulled mid-focus,
+    check it in the Canon menu.
 - The chime is silent while you record video with sound, so it never ends up in your audio.
 
 ## Focus beep and autofocus: Canon settings that help

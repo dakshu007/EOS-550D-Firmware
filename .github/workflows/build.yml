@@ -20,6 +20,9 @@ jobs:
 
       - name: Check and test LUMEN scripts
         run: |
+          v="$(cat lumen/VERSION)"
+          grep -q "#define LUMEN_VERSION \"$v\"" lumen/patches/0001-lumen-theme.patch \
+            || { echo "LUMEN_VERSION in the patch does not match lumen/VERSION ($v)"; exit 1; }
           for f in lumen/scripts/*.lua; do luac5.3 -p "$f"; done
           lua5.3 lumen/tests/test.lua lumen/scripts lumen/tests
 

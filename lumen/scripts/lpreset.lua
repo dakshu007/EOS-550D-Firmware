@@ -2,8 +2,9 @@
 -- One-tap shooting setups: overlays, movie helpers and (in M mode) exposure.
 --
 -- Exposure values (ISO, shutter, aperture) are only changed when the mode
--- dial is on M. In other modes, only the LUMEN/ML overlays are changed.
--- Nothing here starts shooting by itself (the intervalometer is never armed).
+-- dial is on M (Cinema: also movie mode). In other modes, only the overlays
+-- are changed. Presets never touch Canon custom functions (mirror lockup,
+-- bracketing) and never start shooting (the intervalometer is never armed).
 --
 -- Part of LUMEN for EOS 550D. GPL v2 or later.
 
@@ -35,8 +36,6 @@ local PRESETS =
             { "Overlay", "False color", 0 },
             { "Overlay", "Waveform",    0 },
             { "Overlay", "Vectorscope", 0 },
-            { "Shoot",   "Advanced Bracket", 0 },
-            { "Shoot",   "Mirror Lockup",    0 },
         },
     },
     ["Portrait"] =
@@ -64,10 +63,11 @@ local PRESETS =
             { "Movie Tweaks", "Movie Logging", 1 },
         },
         shutter = 1/50,
+        modes = { MODE.M, MODE.MOVIE },
     },
     ["Astro"] =
     {
-        help = "M mode: ISO 1600, 20 s, widest aperture, mirror lockup.",
+        help = "M mode: ISO 1600, 20 s, widest aperture. Magic Zoom for focus.",
         menu =
         {
             { "Overlay", "Global Draw", 1 },
@@ -75,7 +75,6 @@ local PRESETS =
             { "Overlay", "Focus Peak",  0 },
             { "Overlay", "Magic Zoom",  1 },
             { "Overlay", "Spotmeter",   0 },
-            { "Shoot",   "Mirror Lockup", 1 },
         },
         iso = 1600, shutter = 20, aperture = "widest",
     },
@@ -95,7 +94,11 @@ local function set_exposure(p)
     if p.iso == nil and p.shutter == nil and p.aperture == nil then
         return 0, 0, ""
     end
-    if camera.mode ~= MODE.M and camera.mode ~= MODE.MOVIE then
+    local allowed = false
+    for _, m in ipairs(p.modes or { MODE.M }) do
+        if camera.mode == m then allowed = true end
+    end
+    if not allowed then
         return 0, 0, " (exposure needs M mode)"
     end
     local ok, total = 0, 0
@@ -165,4 +168,11 @@ lpreset_menu = menu.new
     end,
 }
 
-lpreset_cfg = config.create_from_menu(lpreset_menu)
+-- settings: only the chosen preset is saved; a missing or unknown value
+-- falls back to Everyday, so future versions can add items safely
+lpreset_cfg = config.create({ preset = "Everyday" })
+local saved = lpreset_cfg.data.preset
+lpreset_menu.submenu["Preset"].value = PRESETS[saved] and saved or "Everyday"
+lpreset_cfg.saving = function(self)
+    self.data = { preset = lpreset_menu.submenu["Preset"].value }
+end

@@ -51,13 +51,18 @@ lastro_menu = menu.new
             help    = "Live View 10x zoom: focus manually until the star is a tiny dot.",
             select  = function(this)
                 task.create(function()
-                    if not lv.enabled then
+                    if not (lv.enabled and lv.running) then
                         display.notify_box("Turn on Live View first", 2000)
                         return
                     end
                     menu.close()
-                    pcall(function() lv.zoom = 10 end)
-                    display.notify_box("10x: focus until the star is smallest", 3000)
+                    local ok = pcall(function() lv.zoom = 10 end)
+                    msleep(500)   -- let Canon apply the zoom before checking
+                    if ok and lv.zoom == 10 then
+                        display.notify_box("10x: focus until the star is smallest", 3000)
+                    else
+                        display.notify_box("Zoom not available here: press the zoom button", 3000)
+                    end
                 end)
             end,
         },
@@ -70,8 +75,26 @@ lastro_menu = menu.new
     end,
 }
 
-lastro_menu.submenu["Star Limit"].value = "OFF"
-lastro_cfg = config.create_from_menu(lastro_menu)
+-- settings: only the two choice items are saved; missing or unknown values
+-- fall back to defaults, so future versions can add items safely
+local LIMIT_CHOICES = { "OFF", "ON" }
+local function valid(choices, v)
+    for _, c in ipairs(choices) do if c == v then return true end end
+    return false
+end
+
+lastro_cfg = config.create({ limit = "OFF", rule = "500 rule" })
+lastro_menu.submenu["Star Limit"].value =
+    valid(LIMIT_CHOICES, lastro_cfg.data.limit) and lastro_cfg.data.limit or "OFF"
+lastro_menu.submenu["Rule"].value =
+    RULES[lastro_cfg.data.rule] and lastro_cfg.data.rule or "500 rule"
+lastro_cfg.saving = function(self)
+    self.data =
+    {
+        limit = lastro_menu.submenu["Star Limit"].value,
+        rule  = lastro_menu.submenu["Rule"].value,
+    }
+end
 
 lv.info
 {

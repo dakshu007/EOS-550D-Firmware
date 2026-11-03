@@ -11,9 +11,23 @@ beep = function(times, dur, freq) L("beep %d %d %d", times, dur or 0, freq or 0)
 msleep = function(ms) clock = clock + ms end
 
 tasks = {}
+sleeping = {}
 task = {
     create = function(fn) table.insert(tasks, coroutine.create(fn)) end,
-    yield = function(ms) clock = clock + (ms or 0); coroutine.yield() end,
+    -- like ML (lua_task.c): task.yield fails if another task of the same
+    -- script is already sleeping inside task.yield
+    yield = function(ms)
+        local me = coroutine.running()
+        for co in pairs(sleeping) do
+            if co ~= me and coroutine.status(co) == "suspended" then
+                error("FIXME: cannot use task.yield() from two tasks")
+            end
+        end
+        clock = clock + (ms or 0)
+        sleeping[me] = true
+        coroutine.yield()
+        sleeping[me] = nil
+    end,
 }
 function run_tasks(steps)
     for _ = 1, steps do
@@ -53,15 +67,40 @@ menu = {
     end,
 }
 
+-- saved config the next script load will see (nil = no file yet)
+mock_saved_cfg = nil
 config = {
-    create_from_menu = function(m) return { menu = m } end,
+    create = function(default)
+        local cfg = { data = mock_saved_cfg or default }
+        mock_saved_cfg = nil
+        return cfg
+    end,
+    create_from_menu = function(m) error("LUMEN scripts must not use create_from_menu") end,
 }
+
+-- Canon properties: scripts attach handlers, tests fire them
+property = setmetatable({}, { __index = function(t, k)
+    local o = {}
+    rawset(t, k, o)
+    return o
+end })
 package.loaded["config"] = config
 
 lens = { af = true, autofocusing = false, focal_length = 18, autofocus_calls = 0 }
 lens.autofocus = function() lens.autofocus_calls = lens.autofocus_calls + 1; return true end
 
-lv = { enabled = true, running = true, zoom = 1, infos = {} }
+-- lv.zoom goes through accessors so tests can make Canon refuse the zoom
+lv = { enabled = true, running = true, infos = {}, zoom_refused = false, _zoom = 1 }
+setmetatable(lv, {
+    __index = function(t, k) if k == "zoom" then return rawget(t, "_zoom") end end,
+    __newindex = function(t, k, v)
+        if k == "zoom" then
+            if not rawget(t, "zoom_refused") then rawset(t, "_zoom", v) end
+        else
+            rawset(t, k, v)
+        end
+    end,
+})
 lv.info = function(def) table.insert(lv.infos, def) end
 
 movie = { recording = false }
