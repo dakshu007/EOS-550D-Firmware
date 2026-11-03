@@ -9,8 +9,8 @@
 --   INFO (DISP)   switch to the classic Magic Lantern menu
 --   Trash / MENU  close (passed straight to Magic Lantern, so it is instant)
 --
--- Open it from Prefs > LUMEN Menu > Open LUMEN Menu, or set
--- "Trash button opens" to LUMEN Menu.
+-- Open it with the Trash button (default), or from
+-- Prefs > LUMEN Menu > Open LUMEN Menu.
 --
 -- Safety: only items marked `toggle` are ever changed from this screen,
 -- and only between OFF and ON. Everything else opens in the normal
@@ -85,11 +85,9 @@ local TABS =
     { name = "Audio", items = {
         { "Speaker Volume",    "Volume for beeps and the LUMEN chime." },
         { "Beep, test tones",  "Enable beeps and play test tones." },
-        { "Audio Meters",      "Show audio levels on screen.", toggle = true },
         { "Analog Gain",       "Microphone input level." },
         { "Digital Gain",      "Digital boost per channel." },
         { "Input source",      "Built-in, external or balanced microphone." },
-        { "Wind Filter",       "Reduce wind noise." },
         { "Mic Power",         "Power for external microphones." },
         { "Headphone Mon.",    "Listen through the AV-out port." },
     }},
@@ -103,7 +101,6 @@ local TABS =
         { "Advanced settings", "More display options." },
     }},
     { name = "Prefs", items = {
-        { "Image Review",      "QuickZoom and review options." },
         { "Arrow/SET shortcuts", "Assign arrow keys to your favorite settings." },
         { "Powersave in LiveView", "Dim or turn off the screen to save battery." },
         { "Customize Menus",   "Hide items and build My Menu." },
@@ -113,7 +110,6 @@ local TABS =
     { name = "Debug", items = {
         { "Shutter Count",     "Total shutter actuations." },
         { "Internal Temp",     "Sensor temperature." },
-        { "Battery level",     "Battery charge." },
         { "Free Memory",       "Available camera memory." },
         { "Show CPU usage",    "Current processor load." },
         { "Screenshot - 10s",  "Save a screenshot of the display after 10 seconds." },
@@ -397,11 +393,13 @@ lmenu_menu = menu.new
     end,
 }
 
-lmenu_cfg = lumen.config({ trash = "Magic Lantern menu" })
+-- default: Trash opens LUMEN Menu. (Saved as "trash_opens": the old "trash"
+-- key from 0.3.3-0.3.6 held the old default, so it is ignored.)
+lmenu_cfg = lumen.config({ trash_opens = "LUMEN Menu" })
 lmenu_menu.submenu["Trash button opens"].value =
-    (lmenu_cfg.data.trash == "LUMEN Menu") and "LUMEN Menu" or "Magic Lantern menu"
+    (lmenu_cfg.data.trash_opens == "Magic Lantern menu") and "Magic Lantern menu" or "LUMEN Menu"
 lmenu_cfg.saving = function(self)
-    self.data = { trash = lmenu_menu.submenu["Trash button opens"].value }
+    self.data = { trash_opens = lmenu_menu.submenu["Trash button opens"].value }
 end
 
 -- Start the LUMEN Menu in its own short-lived task (no permanent background
@@ -428,10 +426,9 @@ function lmenu.start(reason)
 end
 
 -- Trash: let Magic Lantern open its menu as usual, then show LUMEN on top
-event.keypress = function(key)
+lumen.add_key_hook(function(key)
     if key == KEY.TRASH and not menu.visible and not lmenu.open
        and lmenu_menu.submenu["Trash button opens"].value == "LUMEN Menu" then
         lmenu.start("trash")
     end
-    -- never block the key here
-end
+end)

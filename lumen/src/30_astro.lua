@@ -57,7 +57,7 @@ lastro_menu = menu.new
                     end
                     menu.close()
                     local ok = pcall(function() lv.zoom = 10 end)
-                    msleep(500)   -- let Canon apply the zoom before checking
+                    task.yield(500)   -- let Canon apply the zoom (runs in the LUMEN task, so it may yield)
                     if ok and lv.zoom == 10 then
                         display.notify_box("10x: focus until the star is smallest", 3000)
                     else

@@ -48,31 +48,50 @@ function lumen.status()
     return "running"
 end
 
--- Key capture for full-screen LUMEN pages. Trash and MENU are NOT blocked,
--- so Magic Lantern closes its menu at once as usual (and the page with it).
--- Half/full shutter also pass. Everything else is queued for the page.
--- The previous key handler is restored only if it was replaced.
-function lumen.capture_start(self)
-    self.queue, self.leaving = {}, false
-    self.old_keypress = event.keypress
-    event.keypress = function(key)
+-- Buttons. Magic Lantern keeps ONE key handler per script, and a script
+-- can't read it back (event.keypress always reads as nil), so LUMEN sets
+-- it once here and never changes it again:
+--   * while a full-screen LUMEN page is open (capture_start), keys go to
+--     that page. Trash and MENU are NOT blocked, so Magic Lantern closes its
+--     menu at once as usual (and the page with it). Half/full shutter also
+--     pass. Everything else is queued for the page.
+--   * otherwise the key hooks run (e.g. the Trash shortcut) and the key is
+--     always passed on.
+lumen.key_hooks = {}     -- functions(key), called when no page is open
+lumen.capturer = nil     -- the page that has the buttons, or nil
+
+function lumen.add_key_hook(fn)
+    table.insert(lumen.key_hooks, fn)
+end
+
+event.keypress = function(key)
+    local page = lumen.capturer
+    if page ~= nil then
         if key == 0 then return true end
         if key == KEY.TRASH or key == KEY.MENU then
-            self.leaving = true
+            page.leaving = true
             return true
         end
         if key <= KEY.UNPRESS_FULLSHUTTER then return true end
-        table.insert(self.queue, key)
+        table.insert(page.queue, key)
         return false
     end
+    for _, hook in ipairs(lumen.key_hooks) do
+        local ok, err = pcall(hook, key)
+        if not ok then lumen.last_error = tostring(err) end
+    end
+    return true
+end
+
+function lumen.capture_start(self)
+    self.queue, self.leaving = {}, false
+    lumen.capturer = self
     self.capturing = true
 end
 
 function lumen.capture_stop(self)
-    if self.capturing then
-        event.keypress = self.old_keypress
-        self.capturing = false
-    end
+    if lumen.capturer == self then lumen.capturer = nil end
+    self.capturing = false
     self.queue = {}
 end
 

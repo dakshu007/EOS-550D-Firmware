@@ -275,7 +275,7 @@ check(lquick_menu.parent == "Overlay" and lquick_menu.name == "LUMEN Quick", "LU
 
 menu_values = {}
 menu.visible = true
-local trash_hook = event.keypress              -- LUMEN Menu's Trash shortcut (same script)
+local trash_hook = mock_handlers.keypress              -- LUMEN Menu's Trash shortcut (same script)
 key_queue = { KEY.RIGHT, KEY.SET, KEY.Q }      -- move to Zebras, toggle it, close
 draw_calls = 0; menu_set_calls = {}
 lquick_menu.select()
@@ -283,7 +283,8 @@ for _ = 1, 20 do run_tasks(1) end
 check(menu_values["Overlay/Zebras"] == 1, "SET turns the selected overlay on (Zebras)")
 check(menu_set_calls[1] == "Overlay/Zebras=1", "only the selected overlay is changed")
 check(draw_calls == 1, "keys that arrive together are handled in one pass, no wasted redraws (" .. draw_calls .. ")")
-check(menu_blocked == false and event.keypress == trash_hook and trash_hook ~= nil,
+check(menu_blocked == false and mock_handlers.keypress == trash_hook and trash_hook ~= nil
+      and lumen.capturer == nil,
     "closing gives the menu and buttons back (Trash shortcut restored)")
 check(lquick.open == false and #tasks == 1, "the Quick screen ends after closing (only the LUMEN task remains)")
 
@@ -334,7 +335,7 @@ interval.running = true; interval.time = 10; interval.count = 0
 clock = 1000000
 tl_info.update(tl_info)
 check(tl_info.value == "TL 0  0:00", "running before the first frame: frames and elapsed")
-interval.count = 1; event.intervalometer(1)
+interval.count = 1; mock_handlers.intervalometer(1)
 clock = clock + 3000
 tl_info.update(tl_info)
 check(tl_info.value == "TL 1  next 7s  0:03", "countdown after a frame, got " .. tl_info.value)
@@ -344,10 +345,10 @@ check(tl_info.value:match("next 0s") and tl_info.value:match("1:08"), "countdown
 
 log = {}
 ltlapse_menu.submenu["Frame Tick"].value = "ON"
-check(event.intervalometer(2) == nil, "never asks the intervalometer to stop")
+check(mock_handlers.intervalometer(2) == nil, "never asks the intervalometer to stop")
 check(count_beeps() == 1, "Frame Tick beeps once per frame")
 ltlapse_menu.submenu["Frame Tick"].value = "OFF"; log = {}
-event.intervalometer(3)
+mock_handlers.intervalometer(3)
 check(count_beeps() == 0, "Frame Tick OFF is silent")
 
 ltlapse_menu.submenu["Stop now"].select()
@@ -391,7 +392,8 @@ menu.close = function() closed = closed + 1; menu.visible = false end
 
 load_lumen()
 check(lmenu_menu.parent == "Prefs", "LUMEN Menu settings live in Prefs")
-check(lmenu_menu.submenu["Trash button opens"].value == "Magic Lantern menu", "Trash keeps opening the normal ML menu by default")
+check(lmenu_menu.submenu["Trash button opens"].value == "LUMEN Menu", "Trash opens LUMEN Menu by default")
+check(event.keypress == nil, "like ML, the key handler can't be read back (mock is faithful)")
 
 -- open from the menu item
 menu.visible = true; draw_calls = 0; key_queue = {}
@@ -445,7 +447,7 @@ lmenu_menu.submenu["Open LUMEN Menu"].select(); run_tasks(3)
 key_queue = { KEY.MENU }; run_tasks(3)
 check(key_results[#key_results].passed and menu.visible == false and lmenu.open == false and closed == 0,
     "MENU goes straight to Magic Lantern, which closes the menu; LUMEN Menu ends")
-check(lmenu_menu ~= nil and event.keypress ~= nil and lmenu.capturing == false,
+check(lmenu_menu ~= nil and mock_handlers.keypress ~= nil and lmenu.capturing == false and lumen.capturer == nil,
     "the Trash hook is back after closing")
 
 -- INFO goes to the classic ML menu (stays open)
@@ -454,12 +456,14 @@ lmenu_menu.submenu["Open LUMEN Menu"].select(); run_tasks(3)
 key_queue = { KEY.INFO }; run_tasks(3)
 check(lmenu.open == false and closed == 0 and menu.visible, "INFO switches to the classic ML menu")
 
--- Trash shortcut: off by default, then on
+-- Trash shortcut: works after LUMEN Menu was opened and closed above
+-- (0.3.6 bug: closing a page erased the Trash hook), and can be switched off
 menu.visible = false
-event.keypress(KEY.TRASH); run_tasks(2)
+lmenu_menu.submenu["Trash button opens"].value = "Magic Lantern menu"
+mock_handlers.keypress(KEY.TRASH); run_tasks(2)
 check(lmenu.starting == false and lmenu.open == false, "Trash does nothing extra while set to the ML menu")
 lmenu_menu.submenu["Trash button opens"].value = "LUMEN Menu"
-check(event.keypress(KEY.TRASH) == nil, "the Trash key is never blocked")
+check(mock_handlers.keypress(KEY.TRASH) ~= false, "the Trash key is never blocked")
 run_tasks(2)
 check(lmenu.open == false, "waits for the ML menu to appear first")
 menu.visible = true; run_tasks(3)
@@ -469,17 +473,26 @@ check(lmenu.open == false and menu.visible == false, "Trash closes it again")
 
 -- Trash pressed but the menu never appears: gives up quietly after 2 s
 lmenu.starting = false; menu.visible = false
-event.keypress(KEY.TRASH)
+mock_handlers.keypress(KEY.TRASH)
 for _ = 1, 60 do run_tasks(1) end
 check(lmenu.starting == false and lmenu.open == false, "gives up if the ML menu never opens")
 
 -- settings
 lmenu_cfg:saving()
-check(lmenu_cfg.data.trash == "LUMEN Menu", "Trash setting is saved")
+check(lmenu_cfg.data.trash_opens == "LUMEN Menu", "Trash setting is saved")
 tasks = {}; sleeping = {}
-mock_saved_cfg = { trash = "Banana" }
+mock_saved_cfg = { trash_opens = "Banana" }
 load_lumen()
-check(lmenu_menu.submenu["Trash button opens"].value == "Magic Lantern menu", "bad saved value falls back to the ML menu")
+check(lmenu_menu.submenu["Trash button opens"].value == "LUMEN Menu", "bad saved value falls back to LUMEN Menu")
+tasks = {}; sleeping = {}
+mock_saved_cfg = { trash = "Magic Lantern menu" }      -- old 0.3.3-0.3.6 key (old default)
+load_lumen()
+check(lmenu_menu.submenu["Trash button opens"].value == "LUMEN Menu", "the old saved default doesn't keep Trash off")
+tasks = {}; sleeping = {}
+mock_saved_cfg = { trash_opens = "Magic Lantern menu" }
+load_lumen()
+check(lmenu_menu.submenu["Trash button opens"].value == "Magic Lantern menu", "a chosen ML menu setting is kept")
+mock_saved_cfg = nil
 tasks = {}; sleeping = {}
 menu.get = real_get
 
@@ -510,12 +523,12 @@ check(menu_values["Overlay/Global Draw"] == 3, "Global Draw back to its previous
 key_queue = { KEY.TRASH }; run_tasks(3)
 
 -- if the screen can't open, the Trash hook stays (event.keypress not lost)
-local hook = event.keypress
+local hook = mock_handlers.keypress
 local saved_draw = display.draw
 display.draw = function() error("draw failed") end   -- an error after button capture started
 menu.visible = true; log = {}
 lmenu_menu.submenu["Open LUMEN Menu"].select(); run_tasks(3)
-check(event.keypress == hook and hook ~= nil, "a failed open leaves the Trash hook in place")
+check(mock_handlers.keypress == hook and hook ~= nil and lumen.capturer == nil, "a failed open leaves the Trash hook in place")
 check(menu_blocked == false, "a failed open unblocks the menu")
 check(log[#log] and log[#log]:match("LUMEN Menu:"), "a failed open is reported, not silent")
 display.draw = saved_draw; menu.visible = false
@@ -555,6 +568,14 @@ do
     check(src:match("task%.create, monitor, 0x1c, stack%)") == nil,
         "the old call that crashed with ML ASSERT lua_task.c:80 is gone")
     check(src:match("{ 0x4000, 0x2000 }") ~= nil, "stack sizes are 16 KB then 8 KB")
+    -- the real 550D console: "Menu not found" for these (not on this camera)
+    for _, gone in ipairs({ "Audio Meters", "Wind Filter", "Image Review", "Battery level" }) do
+        check(not src:find('"' .. gone .. '"', 1, true), "LUMEN Menu doesn't look for " .. gone .. " (not on the 550D)")
+    end
+    check(not src:find("msleep(500)", 1, true), "Star Focus waits with task.yield, so buttons stay responsive")
+    local sets = 0
+    for _ in src:gmatch("event%.keypress%s*=") do sets = sets + 1 end
+    check(sets == 1, "the key handler is set exactly once (ML can't give it back) (" .. sets .. ")")
 end
 
 -- only 8 KB available: screens still open (fallback)

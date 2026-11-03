@@ -53,7 +53,7 @@ local function deliver_keys()
     while #key_queue > 0 do
         local k = table.remove(key_queue, 1)
         local r = true
-        if event.keypress then r = event.keypress(k) end
+        if mock_handlers.keypress then r = mock_handlers.keypress(k) end
         table.insert(key_results, { key = k, passed = (r ~= false) })
         if r ~= false and (k == KEY.TRASH or k == KEY.MENU) and menu.visible then
             menu.visible = false
@@ -82,7 +82,13 @@ KEY = { UNPRESS_FULLSHUTTER = 0, SET = 1, UP = 2, DOWN = 3, LEFT = 4, RIGHT = 5,
 -- fonts: like ML, each has a height and a width(text) method
 local function font(h, cw) return { height = h, width = function(self, t) return #tostring(t) * cw end } end
 FONT = { MED = font(23, 11), LARGE = font(32, 16), SMALL = font(12, 8) }
-event = {}
+-- event: like ML, assigning registers a handler, but reading it back always
+-- gives nil (ML's __newindex never stores the value in the table)
+mock_handlers = {}
+event = setmetatable({}, {
+    __index = function(t, k) return nil end,
+    __newindex = function(t, k, v) mock_handlers[k] = v end,
+})
 MODE = { M = 3, MOVIE = 20, P = 0 }
 UNIT = { TIME = 1 }
 COLOR = { BLACK = 2, WHITE = 1, ORANGE = 19, gray = function(p) return 38 + p * 41 // 100 end }

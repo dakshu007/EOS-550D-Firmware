@@ -1,4 +1,4 @@
-# LUMEN features (v0.3.6)
+# LUMEN features (v0.3.7)
 
 Everything LUMEN can do on the EOS 550D, where to find it, and what the camera's hardware can't do.
 
@@ -15,7 +15,7 @@ setting and **Q** opens a submenu.
 | **Presets** | Shoot → LUMEN Presets | One-tap setups: **Everyday, Portrait, Landscape, Cinema, Astro, Clean**. Pick one, then **Apply**. |
 | **Star Limit** | Shoot → LUMEN Astro | Shows the longest exposure before stars trail at your focal length (500, 400 or 300 rule, 1.6× crop) in the Live View info bar. |
 | **Star Focus** | Shoot → LUMEN Astro | Jumps Live View to 10× zoom for focusing on a star, and tells you if Canon refuses the zoom (then press the zoom button). |
-| **LUMEN Menu** | Prefs → LUMEN Menu → Open LUMEN Menu | The LUMEN menu layout: tab names in a rail on the left, settings with their current values, a description and button hints at the bottom. **◀ ▶** change tab, **▲ ▼** move, **SET** switches ON/OFF items (overlays, trap/follow focus, audio meters), **Q** or **SET** on anything else opens it in the normal Magic Lantern menu, **INFO** switches to the classic menu, **Trash** closes (instantly, like the normal menu). Switching an item OFF and ON again restores its previous mode (for example Global Draw "ON, all modes"). Settings this camera doesn't have are hidden. Set **Trash button opens → LUMEN Menu** to make it your main menu. |
+| **LUMEN Menu** | **Trash** button (default), or Prefs → LUMEN Menu → Open LUMEN Menu | The LUMEN menu layout: tab names in a rail on the left, settings with their current values, a description and button hints at the bottom. **◀ ▶** change tab, **▲ ▼** move, **SET** switches ON/OFF items (overlays, trap/follow focus), **Q** or **SET** on anything else opens it in the normal Magic Lantern menu, **INFO** switches to the classic menu, **Trash** closes (instantly, like the normal menu). Switching an item OFF and ON again restores its previous mode (for example Global Draw "ON, all modes"). Settings this camera doesn't have are hidden. For the plain Magic Lantern menu on Trash, set **Prefs → LUMEN Menu → Trash button opens → Magic Lantern menu**. |
 | **Quick toggles** | Overlay → LUMEN Quick | One screen with 8 tiles: Overlays, Zebras, Focus Peak, Magic Zoom, Cropmarks, Spotmeter, False Color, Histogram. Arrows move, **SET** toggles (and restores the previous mode when switched back on), **Q** goes back, **Trash** closes. Star it to put it in **★ My Menu**. |
 | **Timelapse status** | Shoot → LUMEN Timelapse | While the intervalometer runs: frames taken, countdown to the next frame and elapsed time, in the menu and the Live View info bar. Optional **Frame Tick** sound, and **Stop now**. |
 | **Live View colors** | Live View info bars | The ISO value you're changing shows as an amber label, exposure override and RAW in amber. Overheat warnings stay red and orange. |
