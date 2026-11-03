@@ -10,17 +10,21 @@ never modified. To go back to the stock camera, start it with a normal card.
 - **Based on:** Magic Lantern `ed3e7c0df` (`2025_release_01`), the build installed on the camera
 - **Design:** the LUMEN canvas, with all screens drawn at the native 720 × 480 resolution
 
-## Status: v0.1.0
+## Status: v0.2.0
+
+The full feature list, including the Canon settings for focus beeps and AF, is in **[FEATURES.md](FEATURES.md)**.
 
 | Area | State |
 |---|---|
 | Menu theme: near-black header and footer, gray selection, amber accent | ✅ |
-| Amber status icons, scrollbar, scroll arrows and active tab | ✅ |
 | LUMEN welcome / About screen | ✅ |
-| All Magic Lantern 550D features (Audio, Expo, Overlay, Movie, Shoot, Focus, Display, Prefs, Modules, Debug) | ✅ unchanged |
-| Live View info bars restyle | planned |
-| LUMEN fonts | planned |
-| Quick toggles screen | planned |
+| **Focus Chime**: pleasant tone when autofocus finishes in Live View | ✅ new |
+| **Auto AF**: refocus every 2, 5 or 10 s in Live View | ✅ new |
+| **Presets**: Everyday, Portrait, Landscape, Cinema, Astro, Clean | ✅ new |
+| **Astro**: star-trail limit and 10× star focus | ✅ new |
+| Lua module and LUMEN scripts start automatically | ✅ new |
+| All Magic Lantern 550D features | ✅ unchanged |
+| Live View info bar restyle, LUMEN fonts | planned |
 
 ## Get a build
 
@@ -32,7 +36,7 @@ Every push is built automatically by GitHub Actions:
 3. Verify the zip:
 
    ```bash
-   shasum -a 256 LUMEN-550D.109-0.1.0.zip
+   shasum -a 256 LUMEN-550D.109-0.2.0.zip
    ```
 
    Compare the result with the contents of the `.sha256` file.
@@ -55,6 +59,8 @@ Finder's "Replace" on the `ML` folder.** It would delete `ML/SETTINGS` and `ML/L
    ```
 
 3. Eject the card, put it in the camera and turn it on. Press **Trash** to open LUMEN.
+   The Lua module and the LUMEN scripts load automatically at startup (a few seconds).
+   You'll find them under **Focus → LUMEN Focus**, **Shoot → LUMEN Presets** and **Shoot → LUMEN Astro**.
 
 ### If something goes wrong
 
@@ -68,7 +74,11 @@ Finder's "Replace" on the `ML` folder.** It would delete `ML/SETTINGS` and `ML/L
 ## Build locally (Linux)
 
 ```bash
-sudo apt install gcc-arm-none-eabi libnewlib-arm-none-eabi python3-docutils make zip git
+sudo apt install gcc-arm-none-eabi libnewlib-arm-none-eabi python3-docutils make zip git lua5.3
+```
+
+```bash
+lua5.3 lumen/tests/test.lua lumen/scripts lumen/tests
 ```
 
 ```bash
@@ -81,10 +91,14 @@ applies `lumen/patches/*.patch` and builds `platform/550D.109`.
 ## Repo layout
 
 ```
-build.sh                    fetch Magic Lantern, apply patches, build
+build.sh                    fetch Magic Lantern, apply patches, add scripts, build
+FEATURES.md                 everything LUMEN can (and can't) do
 lumen/VERSION               LUMEN version
-lumen/patches/              LUMEN changes, as patches against Magic Lantern
-.github/workflows/build.yml automatic build on every push
+lumen/patches/              LUMEN changes to Magic Lantern's C code
+lumen/scripts/              LUMEN features written in Lua (Focus, Presets, Astro)
+lumen/card/                 extra card files: autorun flags in ML/SETTINGS
+lumen/tests/                tests for the Lua scripts, run against a mock camera API
+.github/workflows/build.yml tests and builds on every push
 ```
 
 ## Never commit

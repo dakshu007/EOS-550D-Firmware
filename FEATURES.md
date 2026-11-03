@@ -1,0 +1,69 @@
+# LUMEN features (v0.2.0)
+
+Everything LUMEN can do on the EOS 550D, where to find it, and what the camera's hardware can't do.
+
+Press **Trash (🗑)** to open the LUMEN menu. **◀ ▶** switch tabs, **▲ ▼** move, **SET** changes a
+setting and **Q** opens a submenu.
+
+## New in LUMEN
+
+| Feature | Where | What it does |
+|---|---|---|
+| **Focus Chime** | Focus → LUMEN Focus | Plays a short tone when autofocus finishes in Live View. Choose Soft, Bright (default), Crystal or Classic. **Test Chime** plays it. |
+| **Auto AF** | Focus → LUMEN Focus | In Live View, refocuses every 2, 5 or 10 s while you're not recording. Off by default. |
+| **Presets** | Shoot → LUMEN Presets | One-tap setups: **Everyday, Portrait, Landscape, Cinema, Astro, Clean**. Pick one, then **Apply**. |
+| **Star Limit** | Shoot → LUMEN Astro | Shows the longest exposure before stars trail at your focal length (500, 400 or 300 rule, 1.6× crop) in the Live View info bar. |
+| **Star Focus** | Shoot → LUMEN Astro | Jumps Live View to 10× zoom for focusing on a star. |
+| **LUMEN theme** | everywhere | Dark menus, gray selection bar with an amber marker, amber accents and the LUMEN About screen. |
+
+Notes:
+- **Presets** change ISO, shutter speed and aperture only when the dial is on **M** (or in movie mode
+  with manual exposure). In other modes they change only the overlays. A message reports how many
+  settings were applied. Presets never start the intervalometer.
+- **Auto AF** works best with Canon's Live View AF method **Live mode** (see below). In **Quick mode**
+  the mirror flips every time. It suits still or slow subjects. The 550D can't track moving subjects
+  in Live View.
+- The chime is silent while you record video with sound, so it never ends up in your audio.
+
+## Focus beep and autofocus: Canon settings that help
+
+The 550D's own beep and AF modes work alongside LUMEN. Set these in the **Canon menu** (MENU button):
+
+| Setting | Where (Canon menu) | Set to | Why |
+|---|---|---|---|
+| Beep | Shooting 1 → **Beep** | **Enable** | Beeps when focus locks in the **viewfinder**. LUMEN's chime covers Live View. |
+| AF mode (viewfinder) | Press the **AF** button (▶ on the dial) | **AI Servo** | Continuous autofocus: keeps tracking a moving subject while you hold the shutter halfway. |
+| AF mode (still subjects) | Press the **AF** button | **One Shot** | Locks focus once and beeps |
+| Live View AF method | Shooting 4 → **AF mode** (Live View settings) | **Live mode**, or **Face detection Live mode** for people | Contrast AF on the sensor, needed for LUMEN Auto AF. Face detection finds faces automatically. |
+| Movie AF | Movie menu → **AF mode** | **Live mode** or **Face detection** | Press halfway (or *) to refocus during video |
+
+## All features by tab
+
+| Tab | Features |
+|---|---|
+| 🎤 **Audio** | Manual audio levels (analog and digital gain), AGC off, wind filter, input source, audio meters |
+| ± **Expo** | White balance in Kelvin and fine-tuning, fine ISO, shutter and aperture control, picture styles, auto ETTR, Dual ISO, auto exposure |
+| 📊 **Overlay** | Zebras, focus peaking, Magic Zoom, cropmarks, ghost image, spotmeter, false color, histogram, waveform, vectorscope |
+| 🎥 **Movie** | RAW video (MLV Lite) with sound (mlv_snd) and playback (mlv_play), FPS override, HDR video, bit rate, gradual exposure, vignetting, image fine-tuning, creative effects, Movie Tweaks (logging, time indicator, auto-restart, REC/STBY notify, force Live View, shutter lock) |
+| 📷 **Shoot** | **LUMEN Presets**, **LUMEN Astro**, HDR bracketing, intervalometer, advanced intervalometer (adv_int), deflicker, bulb timer, silent pictures, motion detect, LCD sensor remote, audio remote shot, mirror lockup, flash tweaks |
+| ✛ **Focus** | **LUMEN Focus**, trap focus, follow focus, rack focus, focus stacking, DOF and hyperfocal info, focus patterns |
+| 🖥 **Display** | Live View brightness, contrast and saturation, color schemes, clear overlays, defishing, anamorphic preview |
+| 🔧 **Prefs** | Config files, QuickZoom image review, Live View zoom tweaks, focus box, arrow/SET shortcuts, key settings, warnings, power saving, display presets, **customize menus / My Menu** |
+| ▦ **Modules** | File manager, image viewer, Lua scripting, custom file names (img_name), card benchmark, self-test, Arkanoid |
+| 📜 **Scripts** | LUMEN scripts plus calculator, Pong, Sokoban, text editor, movie delayed start, screenshot |
+
+### Make your own "Fn" menu (like Sony)
+1. Open any setting you use often, for example Zebras.
+2. Open **Prefs → Customize Menus** and star (★) the settings you want.
+3. They appear together in the **★ My Menu** tab, your one-stop quick menu.
+
+## Not possible on the 550D hardware
+
+| Feature on modern cameras | Why not |
+|---|---|
+| Eye AF and AI subject tracking | No on-sensor phase-detect AF or AI processor |
+| Fast, continuous video AF | Same reason. Live View uses slow contrast AF. |
+| In-body stabilization, pixel shift | The sensor can't move. Use lens IS. |
+| 4K, 120 fps, 10-bit, log profiles | DIGIC 4 processor and card speed limits |
+| Electronic level | The 550D has no level sensor |
+| Wi-Fi, Bluetooth, touchscreen, flip screen, dual cards | Physical hardware |

@@ -16,7 +16,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             gcc-arm-none-eabi libnewlib-arm-none-eabi \
-            python3 python3-docutils make zip
+            python3 python3-docutils make zip lua5.3
+
+      - name: Check and test LUMEN scripts
+        run: |
+          for f in lumen/scripts/*.lua; do luac5.3 -p "$f"; done
+          lua5.3 lumen/tests/test.lua lumen/scripts lumen/tests
 
       - name: Build LUMEN for EOS 550D (fw 1.0.9)
         run: ./build.sh

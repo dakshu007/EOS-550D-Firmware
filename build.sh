@@ -3,8 +3,8 @@
 #
 # What it does:
 #   1. Fetches the exact Magic Lantern source this project is based on
-#   2. Applies the LUMEN patches from lumen/patches/
-#   3. Builds the 550D.109 platform
+#   2. Applies the LUMEN patches from lumen/patches/ and adds lumen/scripts/
+#   3. Builds the 550D.109 platform and adds lumen/card/ (autorun flags)
 #   4. Writes dist/LUMEN-550D.109-<version>.zip (+ .sha256)
 #
 # Requirements: git, make, python3 (with docutils), zip,
@@ -42,6 +42,9 @@ for p in "$ROOT"/lumen/patches/*.patch; do
     git -C "$SRC" apply --whitespace=nowarn "$p"
 done
 
+echo "==> Adding LUMEN scripts"
+cp "$ROOT"/lumen/scripts/*.lua "$SRC/scripts/"
+
 echo "==> Building 550D.109"
 JOBS="$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2)"
 make -C "$SRC/platform/550D.109" -j"$JOBS" ARM_BINPATH="$ARM_BINPATH"
@@ -52,6 +55,9 @@ OUT="$SRC/platform/550D.109/build/magiclantern.zip"
 mkdir -p "$DIST"
 ZIP="$DIST/LUMEN-550D.109-$LUMEN_VERSION.zip"
 cp "$OUT" "$ZIP"
+
+# card extras: flag files that load the Lua module and autorun LUMEN scripts
+( cd "$ROOT/lumen/card" && zip -q -r "$ZIP" . )
 ( cd "$DIST" && sha256sum "$(basename "$ZIP")" > "$(basename "$ZIP").sha256" )
 
 echo
