@@ -1,0 +1,166 @@
+diff --git a/src/menu.c b/src/menu.c
+index a83f43e1..c10723f5 100755
+--- a/src/menu.c
++++ b/src/menu.c
+@@ -56,10 +56,18 @@
+ #define MENU_HELP_Y_POS_2 458
+ #define MENU_WARNING_Y_POS (menu_lv_transparent_mode ? 425 : 458)
+ 
+-#define MENU_BG_COLOR_HEADER_FOOTER 42
++/* LUMEN theme: near-black chrome, quiet gray selection, one amber accent */
++#define LUMEN_ACCENT        COLOR_ORANGE            /* the single accent color */
++#define LUMEN_ACCENT_DIM    COLOR_DARK_ORANGE_MOD   /* accent for greyed-out items */
++#define LUMEN_BAR           COLOR_GRAY(22)          /* selected row background */
++#define LUMEN_BAR_EDIT      COLOR_GRAY(40)          /* value being edited / pickbox selection */
++
++#define MENU_BG_COLOR_HEADER_FOOTER COLOR_GRAY(5)
+ 
+ extern int bmp_color_scheme;
+-#define MENU_BAR_COLOR (bmp_color_scheme ? COLOR_LIGHT_BLUE : COLOR_BLUE)
++#define MENU_BAR_COLOR (bmp_color_scheme ? COLOR_LIGHT_BLUE : LUMEN_BAR)
++#define MENU_EDIT_COLOR (bmp_color_scheme ? COLOR_LIGHT_BLUE : LUMEN_BAR_EDIT)
++#define MENU_ACCENT_COLOR (bmp_color_scheme ? COLOR_LIGHT_BLUE : LUMEN_ACCENT)
+ 
+ #ifdef CONFIG_MENU_ICONS
+ #define SUBMENU_OFFSET 48
+@@ -2186,12 +2194,12 @@ static void menu_draw_icon(int x, int y, int type, intptr_t arg, int warn)
+ 
+     x -= MENU_OFFSET;
+     
+-    int color_on = warn ? COLOR_DARK_GREEN1_MOD : COLOR_GREEN1;
++    int color_on = warn ? LUMEN_ACCENT_DIM : LUMEN_ACCENT;
+     int color_off = 45;
+     int color_dis = warn ? 50 : COLOR_RED;
+-    int color_slider_fg = warn ? COLOR_DARK_CYAN1_MOD : COLOR_CYAN;
++    int color_slider_fg = warn ? LUMEN_ACCENT_DIM : LUMEN_ACCENT;
+     int color_slider_bg = warn ? COLOR_BLACK : 45;
+-    int color_slider_off_fg = warn ? COLOR_DARK_GREEN1_MOD : COLOR_GREEN1;
++    int color_slider_off_fg = warn ? LUMEN_ACCENT_DIM : LUMEN_ACCENT;
+     int color_action = warn ? 45 : COLOR_WHITE;
+ 
+     switch(type)
+@@ -2357,7 +2365,7 @@ static void pickbox_draw(struct menu_entry * entry, int x0, int y0)
+     {
+         int y = y0 + (i-lo) * 32;
+         if (i == sel)
+-            selection_bar_backend(MENU_BAR_COLOR, 45, x0-16, y, w, 32);
++            selection_bar_backend(MENU_EDIT_COLOR, 45, x0-16, y, w, 32);
+         bmp_printf(fnt, x0, y, pickbox_string(entry, i));
+     }
+     
+@@ -2669,7 +2677,7 @@ static void display_customize_marker(struct menu_entry * entry, int x, int y)
+ {
+     // star marker
+     if (entry->starred)
+-        bfnt_draw_char(ICON_ML_MYMENU, x, y-4, COLOR_GREEN1, NO_BG_ERASE);
++        bfnt_draw_char(ICON_ML_MYMENU, x, y-4, LUMEN_ACCENT, NO_BG_ERASE);
+     
+     // hidden marker
+     else if (HAS_CURRENT_HIDDEN_FLAG(entry))
+@@ -2919,13 +2927,18 @@ skip_name:
+     // selection bar
+     if (entry->selected)
+     {
+-        int color_left = 45;
+-        int color_right = MENU_BAR_COLOR;
+-        if (junkie_mode && !in_submenu) color_left = color_right = COLOR_BLACK;
+-        if (customize_mode) { color_left = color_right = get_customize_color(); }
++        int color_left = MENU_BAR_COLOR;
++        int color_right = edit_mode ? MENU_EDIT_COLOR : MENU_BAR_COLOR;
++        int lumen_marker = 1;
++        if (junkie_mode && !in_submenu) { color_left = color_right = COLOR_BLACK; lumen_marker = 0; }
++        if (customize_mode) { color_left = color_right = get_customize_color(); lumen_marker = 0; }
+ 
+         selection_bar_backend(color_left, COLOR_BLACK, xl, y, xc-xl, h-1);
+         selection_bar_backend(color_right, COLOR_BLACK, xc, y, x_end-xc, h-1);
++
++        /* LUMEN: thin accent marker at the start of the selected row */
++        if (lumen_marker && xl > 4)
++            bmp_fill(MENU_ACCENT_COLOR, xl - 4, y + 4, 3, MAX(h - 9, 1));
+         
+         // use a pickbox if possible
+         if (edit_mode && CAN_HAVE_PICKBOX(entry))
+@@ -3500,7 +3513,7 @@ menu_display(
+     if (scroll_pos > 0)
+     {
+         for (int i = -13; i <= 13; i++)
+-            draw_line(360 - i, y + 8 - 12, 360, y - 12, MENU_BAR_COLOR);
++            draw_line(360 - i, y + 8 - 12, 360, y - 12, MENU_ACCENT_COLOR);
+     }
+ 
+     //<== vscroll
+@@ -3554,7 +3567,7 @@ menu_display(
+     {
+         y += 10;
+         for (int i = -13; i <= 13; i++)
+-            draw_line(360 - i, y - 8, 360, y, MENU_BAR_COLOR);
++            draw_line(360 - i, y - 8, 360, y, MENU_ACCENT_COLOR);
+     }
+ 
+ end:
+@@ -4005,7 +4018,7 @@ show_vscroll(struct menu * parent){
+         if (submenu_level) x -= 6;
+         
+         bmp_fill(COLOR_BLACK, x-2, y_lo, 6, h);
+-        bmp_fill(MENU_BAR_COLOR, x, y, 3, size);
++        bmp_fill(MENU_ACCENT_COLOR, x, y, 3, size);
+     }
+ }
+ 
+@@ -4083,8 +4096,8 @@ void menus_display(
+     
+     int bgs = COLOR_BLACK;
+     int bgu = MENU_BG_COLOR_HEADER_FOOTER;
+-    int fgu = COLOR_GRAY(35);
+-    int fgs = COLOR_WHITE;
++    int fgu = COLOR_GRAY(45);
++    int fgs = MENU_ACCENT_COLOR;
+ 
+     if (customize_mode) fgs = get_customize_color();
+ 
+diff --git a/src/menuhelp.c b/src/menuhelp.c
+index 425f1ae9..bb9e81a9 100644
+--- a/src/menuhelp.c
++++ b/src/menuhelp.c
+@@ -36,27 +36,32 @@ extern int menu_help_active;
+ static int current_page = 1;
+ static int help_pages = 100; // dummy value, will be updated on the fly
+ 
++#define LUMEN_VERSION "0.1.0"
++
+ void 
+ draw_beta_warning()
+ {
++    /* LUMEN welcome screen (shown on first boot and on Help > About) */
+     bmp_fill(COLOR_BLACK, 0, 0, 720, 480);
+ 
+-    bmp_printf(FONT_CANON, 242, 53, "Magic Lantern");
++    bmp_printf(FONT(FONT_LARGE, COLOR_WHITE, COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 90, "L U M E N");
+ 
+-    bmp_printf(FONT_MED | FONT_ALIGN_CENTER, 360, 150, "This is a development snapshot for testing purposes.");
++    bmp_fill(COLOR_ORANGE, 330, 150, 60, 3);
+ 
+-    bmp_printf(FONT_MED | FONT_ALIGN_CENTER, 360, 200, "Please report all bugs at www.magiclantern.fm.");
++    bmp_printf(FONT(FONT_MED, COLOR_GRAY(70), COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 175, "Custom firmware for EOS 550D");
+ 
+-    bmp_printf(FONT_MED | FONT_ALIGN_CENTER, 360, 250, "Be careful using it for production work.      ");
++    bmp_printf(FONT(FONT_MED, COLOR_GRAY(70), COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 225, "Built on Magic Lantern. Development snapshot:");
+ 
+-    bmp_printf(FONT_MED | FONT_ALIGN_CENTER, 360, 300, "Enjoy!");
+-    
+-    bmp_printf(FONT_MED | FONT_ALIGN_CENTER, 360, 350, "(Press any camera button to enter ML settings)");
++    bmp_printf(FONT(FONT_MED, COLOR_GRAY(70), COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 255, "be careful using it for production work.");
++
++    bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 320, "Press any button to open LUMEN");
+ 
+-    big_bmp_printf(FONT_MED,  10,  410,
+-        "Magic Lantern version: %s\n"
++    big_bmp_printf(FONT(FONT_MED, COLOR_GRAY(50), COLOR_BLACK),  10,  380,
++        "LUMEN %s\n"
++        "Magic Lantern %s\n"
+         "Git commit: %s\n"
+         "Built on %s by %s.",
++        LUMEN_VERSION,
+         build_version,
+         build_id,
+         build_date,

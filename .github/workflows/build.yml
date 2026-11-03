@@ -1,0 +1,31 @@
+name: Build LUMEN
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-550d:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc-arm-none-eabi libnewlib-arm-none-eabi \
+            python3 python3-docutils make zip
+
+      - name: Build LUMEN for EOS 550D (fw 1.0.9)
+        run: ./build.sh
+
+      - name: Upload card files
+        uses: actions/upload-artifact@v4
+        with:
+          name: LUMEN-550D.109
+          path: |
+            dist/*.zip
+            dist/*.sha256
+          if-no-files-found: error

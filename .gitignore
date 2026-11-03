@@ -1,0 +1,16 @@
+# Build output
+/work/
+/dist/
+
+# NEVER commit camera ROM dumps: they contain Canon's copyrighted firmware
+*.BIN
+*.bin
+ROM*
+
+# Canon firmware updates are Canon's files, not ours
+*.FIR
+*.fir
+
+# macOS
+.DS_Store
+._*
