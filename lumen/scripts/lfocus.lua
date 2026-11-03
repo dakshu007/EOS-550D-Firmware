@@ -41,7 +41,26 @@ local AUTO_AF_LIMIT_MS = 10 * 60 * 1000
 
 -- Canon Live View AF method: 0 = Quick, 1 = Live, 2 = Face detection, nil = unknown
 lfocus_af_system = nil
-lfocus_test_pending = false
+lfocus_heartbeat = nil     -- ms clock of the monitor's last loop (nil = never ran)
+lfocus_last_error = nil    -- last error inside the monitor loop, if any
+
+-- called from a menu action: plays at once, without task.yield
+-- (msleep keeps it independent of the background task)
+local function play_chime_now(name)
+    local seq = CHIMES[name]
+    if seq == nil then return end
+    for i, tone in ipairs(seq) do
+        beep(1, tone[2], tone[1])
+        if i < #seq then msleep(tone[2] + NOTE_GAP_MS) end
+    end
+end
+
+local function monitor_status()
+    if lfocus_heartbeat == nil then return "not started" end
+    if dryos.ms_clock - lfocus_heartbeat > 3000 then return "stopped" end
+    if lfocus_last_error then return "running (had an error)" end
+    return "running"
+end
 
 -- called from the monitor task only (it yields)
 local function play_chime(name)
@@ -73,7 +92,25 @@ lfocus_menu = menu.new
         {
             name    = "Test Chime",
             help    = "Play the selected chime now.",
-            select  = function(this) lfocus_test_pending = true end,
+            select  = function(this)
+                local name = lfocus_menu.submenu["Focus Chime"].value
+                if name == "OFF" then
+                    display.notify_box("Focus Chime is OFF: pick a sound first", 2000)
+                    return
+                end
+                display.notify_box("Chime: " .. name .. " (Audio > Speaker Volume = louder)", 1500)
+                play_chime_now(name)
+            end,
+        },
+        {
+            name    = "Status",
+            help    = "Is the background part (AF chime, Auto AF) running?",
+            icon_type = ICON_TYPE.ACTION,
+            rinfo   = function(this) return monitor_status() end,
+            select  = function(this)
+                display.notify_box("LUMEN Focus: " .. monitor_status()
+                    .. (lfocus_last_error and (" - " .. lfocus_last_error) or ""), 5000)
+            end,
         },
         {
             name    = "Auto AF",
@@ -134,46 +171,47 @@ local function monitor()
     while true do
         local now = dryos.ms_clock
         local focusing = false
+        -- one pass; an error is recorded (shown in LUMEN Focus > Status)
+        -- instead of stopping the background task
+        local ok, err = pcall(function()
 
-        if lfocus_test_pending then
-            lfocus_test_pending = false
-            play_chime(lfocus_menu.submenu["Focus Chime"].value)
-        end
+            lfocus_heartbeat = now
 
-        -- Auto AF time limit
-        local auto_value = lfocus_menu.submenu["Auto AF"].value
-        if auto_value == "OFF" then
-            auto_started = nil
-        elseif auto_started == nil then
-            auto_started = now
-        elseif now - auto_started > AUTO_AF_LIMIT_MS then
-            lfocus_menu.submenu["Auto AF"].value = "OFF"
-            auto_value = "OFF"
-            auto_started = nil
-            display.notify_box("Auto AF switched off after 10 minutes", 3000)
-        end
-
-        if lv.enabled then
-            focusing = lens.autofocusing
-
-            -- chime when a user-triggered AF run ends
-            if was_focusing and not focusing then
-                play_chime(lfocus_menu.submenu["Focus Chime"].value)
+            -- Auto AF time limit
+            local auto_value = lfocus_menu.submenu["Auto AF"].value
+            if auto_value == "OFF" then
+                auto_started = nil
+            elseif auto_started == nil then
+                auto_started = now
+            elseif now - auto_started > AUTO_AF_LIMIT_MS then
+                lfocus_menu.submenu["Auto AF"].value = "OFF"
+                auto_value = "OFF"
+                auto_started = nil
+                display.notify_box("Auto AF switched off after 10 minutes", 3000)
             end
 
-            -- Auto AF
-            local interval = AUTO_AF_MS[auto_value]
-            if interval ~= nil and auto_af_allowed() then
-                if now >= next_af then
-                    pcall(lens.autofocus)
-                    focusing = false          -- no chime for automatic runs
-                    next_af = dryos.ms_clock + interval
+            if lv.enabled then
+                focusing = lens.autofocusing
+
+                -- chime when a user-triggered AF run ends
+                if was_focusing and not focusing then
+                    play_chime(lfocus_menu.submenu["Focus Chime"].value)
                 end
-            else
-                next_af = now + (interval or 3000)
-            end
-        end
 
+                -- Auto AF
+                local interval = AUTO_AF_MS[auto_value]
+                if interval ~= nil and auto_af_allowed() then
+                    if now >= next_af then
+                        pcall(lens.autofocus)
+                        focusing = false          -- no chime for automatic runs
+                        next_af = dryos.ms_clock + interval
+                    end
+                else
+                    next_af = now + (interval or 3000)
+                end
+            end
+        end)
+        if not ok then lfocus_last_error = tostring(err) end
         was_focusing = focusing
         task.yield(focusing and 20 or 60)
     end

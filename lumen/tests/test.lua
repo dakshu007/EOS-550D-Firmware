@@ -44,6 +44,38 @@ for _, name in ipairs({ "Soft", "Bright", "Crystal", "Classic" }) do
 end
 check(#tasks == 1, "Test Chime does not start extra tasks")
 
+-- Test Chime plays immediately, without needing the background task
+local saved_tasks = tasks
+tasks = {}                                    -- pretend the background task never ran
+F["Focus Chime"].value = "Bright"; log = {}
+F["Test Chime"].select()
+check(count_beeps() == 2, "Test Chime plays at once, even with no background task")
+local saw_msg = false
+for _, l in ipairs(log) do if l:match("notify: Chime: Bright") then saw_msg = true end end
+check(saw_msg, "Test Chime shows a message so you know the press registered")
+F["Focus Chime"].value = "OFF"; log = {}
+F["Test Chime"].select()
+check(count_beeps() == 0 and log[#log]:match("Focus Chime is OFF"), "Test Chime explains when the chime is OFF")
+tasks = saved_tasks
+
+-- Status shows whether the background task is alive, and errors
+ticks(2)
+check(F["Status"].rinfo() == "running", "Status: running")
+clock = clock + 5000
+check(F["Status"].rinfo() == "stopped", "Status: stopped when the background task stops looping")
+ticks(1)
+local real_lens = lens
+lens = setmetatable({}, { __index = function(t, k)
+    if k == "autofocusing" then error("test failure") end
+    return real_lens[k]
+end })
+ticks(2)
+check(F["Status"].rinfo() == "running (had an error)" and lfocus_last_error:match("test failure"),
+    "an error is recorded and the background task keeps running")
+lens = real_lens; lfocus_last_error = nil
+ticks(2)
+check(F["Status"].rinfo() == "running", "keeps running after the error")
+
 -- chime OFF -> silent
 F["Focus Chime"].value = "OFF"
 lens.autofocusing = true; ticks(2); log = {}
@@ -413,7 +445,7 @@ check(lmenu.open == false and closed == 0 and menu.visible, "INFO switches to th
 -- Trash shortcut: off by default, then on
 menu.visible = false
 event.keypress(KEY.TRASH); run_tasks(2)
-check(lmenu.pending == false and lmenu.open == false, "Trash does nothing extra while set to the ML menu")
+check(lmenu.starting == false and lmenu.open == false, "Trash does nothing extra while set to the ML menu")
 lmenu_menu.submenu["Trash button opens"].value = "LUMEN Menu"
 check(event.keypress(KEY.TRASH) == nil, "the Trash key is never blocked")
 run_tasks(2)
@@ -424,10 +456,10 @@ key_queue = { KEY.TRASH }; run_tasks(3)
 check(lmenu.open == false and menu.visible == false, "Trash closes it again")
 
 -- Trash pressed but the menu never appears: gives up quietly after 2 s
-lmenu.pending = false; menu.visible = false
+lmenu.starting = false; menu.visible = false
 event.keypress(KEY.TRASH)
 for _ = 1, 60 do run_tasks(1) end
-check(lmenu.pending == false and lmenu.open == false, "gives up if the ML menu never opens")
+check(lmenu.starting == false and lmenu.open == false, "gives up if the ML menu never opens")
 
 -- settings
 lmenu_cfg:saving()

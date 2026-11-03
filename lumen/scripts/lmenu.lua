@@ -15,7 +15,8 @@
 -- Safety: only items marked `toggle` are ever changed from this screen,
 -- and only between OFF and ON. Everything else opens in the normal
 -- Magic Lantern menu. Settings that don't exist on this camera are hidden.
--- Only one task (monitor) ever calls task.yield.
+-- No permanent background task: the screen runs in a task started when you
+-- open it, and only that task ever calls task.yield.
 --
 -- Part of LUMEN for EOS 550D. GPL v2 or later.
 
@@ -129,7 +130,7 @@ local LIST_X, LIST_W = 162, 546
 local ROW_H, ROWS_VISIBLE = 36, 10
 local LIST_Y = HEADER_H + 4
 
-lmenu = { tab = 1, row = 1, top = 1, open = false, pending = false, tabs = {}, built = false }
+lmenu = { tab = 1, row = 1, top = 1, open = false, starting = false, tabs = {}, built = false }
 
 -- responsiveness: keys are checked every 20 ms, queued keys are all handled
 -- before one redraw, and values are cached (only the changed item is re-read)
@@ -335,7 +336,7 @@ function lmenu:handle_key(key)
     return true
 end
 
--- the LUMEN Menu screen; runs inside the monitor task (it yields)
+-- the LUMEN Menu screen; runs inside the task started by lmenu.start (it yields)
 function lmenu:run()
     if self.open then return end
     self.open = true
@@ -383,7 +384,10 @@ lmenu_menu = menu.new
             name    = "Open LUMEN Menu",
             help    = "Open the LUMEN Menu now.",
             icon_type = ICON_TYPE.ACTION,
-            select  = function(this) lmenu.pending = true end,
+            select  = function(this)
+                display.notify_box("Opening LUMEN Menu...", 800)
+                lmenu.start("menu")
+            end,
         },
         {
             name    = "Trash button opens",
@@ -403,28 +407,34 @@ lmenu_cfg.saving = function(self)
     self.data = { trash = lmenu_menu.submenu["Trash button opens"].value }
 end
 
+-- Start the LUMEN Menu in its own short-lived task (no permanent background
+-- task). Only this task ever yields, and only one runs at a time.
+-- If the Magic Lantern menu isn't on screen yet (Trash shortcut), it waits
+-- up to 2 s for it.
+function lmenu.start(reason)
+    if lmenu.open then return end
+    -- a start that never ran is forgotten after 5 s, so a press is never lost for good
+    if lmenu.starting and dryos.ms_clock - lmenu.starting < 5000 then return end
+    lmenu.starting = dryos.ms_clock
+    local ok, err = pcall(task.create, function()
+        local waited = 0
+        while not menu.visible and waited < 2000 do
+            task.yield(50); waited = waited + 50
+        end
+        lmenu.starting = false
+        if menu.visible then lmenu:run() end
+    end, 0x1c, 0x8000)
+    if not ok then
+        lmenu.starting = false
+        display.notify_box("LUMEN Menu: " .. tostring(err), 4000)
+    end
+end
+
 -- Trash: let Magic Lantern open its menu as usual, then show LUMEN on top
 event.keypress = function(key)
     if key == KEY.TRASH and not menu.visible and not lmenu.open
        and lmenu_menu.submenu["Trash button opens"].value == "LUMEN Menu" then
-        lmenu.pending = true
+        lmenu.start("trash")
     end
     -- never block the key here
 end
-
-local function monitor()
-    while true do
-        if lmenu.pending then
-            lmenu.pending = false
-            -- wait (up to 2 s) for the Magic Lantern menu to be on screen
-            local waited = 0
-            while not menu.visible and waited < 2000 do
-                task.yield(50); waited = waited + 50
-            end
-            if menu.visible then lmenu:run() end
-        end
-        task.yield(100)
-    end
-end
-
-task.create(monitor, 0x1c, 0x8000)   -- 32 KB stack is plenty for this loop

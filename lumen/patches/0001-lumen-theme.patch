@@ -175,14 +175,14 @@ index a83f43e1..ee7ffd41 100755
      if (customize_mode) fgs = get_customize_color();
  
 diff --git a/src/menuhelp.c b/src/menuhelp.c
-index 425f1ae9..2689dc57 100644
+index 425f1ae9..8ec36315 100644
 --- a/src/menuhelp.c
 +++ b/src/menuhelp.c
 @@ -36,33 +36,144 @@ extern int menu_help_active;
  static int current_page = 1;
  static int help_pages = 100; // dummy value, will be updated on the fly
  
-+#define LUMEN_VERSION "0.3.0"
++#define LUMEN_VERSION "0.3.1"
 +
 +/* LUMEN boot logo "Focus Frame": the LUMEN wordmark inside amber
 + * autofocus brackets. Drawn only with solid fills and 1px lines,

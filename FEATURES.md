@@ -1,4 +1,4 @@
-# LUMEN features (v0.3.0)
+# LUMEN features (v0.3.1)
 
 Everything LUMEN can do on the EOS 550D, where to find it, and what the camera's hardware can't do.
 
@@ -9,7 +9,8 @@ setting and **Q** opens a submenu.
 
 | Feature | Where | What it does |
 |---|---|---|
-| **Focus Chime** | Focus → LUMEN Focus | Plays a short tone when autofocus finishes in Live View. Choose Soft, Bright (default), Crystal or Classic. **Test Chime** plays it. |
+| **Focus Chime** | Focus → LUMEN Focus | Plays a short tone when autofocus finishes in Live View. Choose Soft, Bright (default), Crystal or Classic. **Test Chime** plays it right away and shows a message. |
+| **Status** | Focus → LUMEN Focus | Shows whether LUMEN Focus's background part (AF chime, Auto AF) is running, and the last error if there was one. Press SET to see the details. |
 | **Auto AF** | Focus → LUMEN Focus | In Live View, refocuses every 2, 5 or 10 s while you're not recording. Always starts OFF and switches itself off after 10 minutes. |
 | **Presets** | Shoot → LUMEN Presets | One-tap setups: **Everyday, Portrait, Landscape, Cinema, Astro, Clean**. Pick one, then **Apply**. |
 | **Star Limit** | Shoot → LUMEN Astro | Shows the longest exposure before stars trail at your focal length (500, 400 or 300 rule, 1.6× crop) in the Live View info bar. |
