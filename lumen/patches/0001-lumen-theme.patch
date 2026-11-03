@@ -1,3 +1,40 @@
+diff --git a/modules/lua/lua.c b/modules/lua/lua.c
+index b3df0a73..d1d23482 100644
+--- a/modules/lua/lua.c
++++ b/modules/lua/lua.c
+@@ -1271,12 +1271,10 @@ static void lua_do_autoload()
+     {
+         if(lua_get_flag(script, SCRIPT_FLAG_AUTORUN_ENABLED))
+         {
+-            if (!console_visible)
+-            {
+-                /* only show Lua script loading messages at startup (on demand) */
+-                console_clear();
+-                console_show();
+-            }
++            /* LUMEN: don't pop the console at startup. Hiding it later asks
++             * Canon to redraw, which on the 550D can leave the screen blank
++             * until a button is pressed. It is shown below only if a script
++             * failed to load. */
+             script->autorun = 1;
+             load_script(script);
+             msleep(100);
+@@ -1359,6 +1357,15 @@ static void lua_load_task(int unused)
+     lua_print_free_mem();
+     printf("[Lua] all scripts loaded.\n");
+ 
++    /* LUMEN: show the startup messages only if an autorun script failed */
++    for (struct lua_script * script = lua_scripts; script; script = script->next)
++    {
++        if (script->autorun && script->last_error && !console_visible)
++        {
++            console_show();
++        }
++    }
++
+     if (console_visible && !console_was_visible)
+     {
+         /* did we pop the console?
 diff --git a/src/lens.c b/src/lens.c
 index 60599ef6..c74d750c 100644
 --- a/src/lens.c
@@ -175,14 +212,14 @@ index a83f43e1..ee7ffd41 100755
      if (customize_mode) fgs = get_customize_color();
  
 diff --git a/src/menuhelp.c b/src/menuhelp.c
-index 425f1ae9..a6668f32 100644
+index 425f1ae9..d7143561 100644
 --- a/src/menuhelp.c
 +++ b/src/menuhelp.c
 @@ -36,33 +36,89 @@ extern int menu_help_active;
  static int current_page = 1;
  static int help_pages = 100; // dummy value, will be updated on the fly
  
-+#define LUMEN_VERSION "0.3.4"
++#define LUMEN_VERSION "0.3.5"
 +
 +/* LUMEN boot logo "Focus Frame": the LUMEN wordmark inside amber
 + * autofocus brackets. Drawn only with solid fills and 1px lines,
