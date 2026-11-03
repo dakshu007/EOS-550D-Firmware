@@ -10,7 +10,7 @@ never modified. To go back to the stock camera, start it with a normal card.
 - **Based on:** Magic Lantern `ed3e7c0df` (`2025_release_01`), the build installed on the camera
 - **Design:** the LUMEN canvas, with all screens drawn at the native 720 × 480 resolution
 
-## Status: v0.3.1
+## Status: v0.3.2
 
 The full feature list, including the Canon settings for focus beeps and AF, is in **[FEATURES.md](FEATURES.md)**.
 
@@ -42,7 +42,7 @@ Every push is tested and built automatically by GitHub Actions:
 3. Check that the download is intact:
 
    ```bash
-   shasum -a 256 LUMEN-550D.109-0.3.1.zip
+   shasum -a 256 LUMEN-550D.109-0.3.2.zip
    ```
 
    Compare the result with the `.sha256` file. (It proves the file wasn't damaged in transit. It

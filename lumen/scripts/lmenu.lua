@@ -136,6 +136,16 @@ lmenu = { tab = 1, row = 1, top = 1, open = false, starting = false, tabs = {}, 
 -- before one redraw, and values are cached (only the changed item is re-read)
 local KEY_POLL_MS = 20
 
+-- Start a task with a small stack. The 550D has very little memory for
+-- task stacks: 32-64 KB requests fail with "task not started". Try 16 KB,
+-- then 8 KB (ML's own C tasks use 4-8 KB). Returns true if started.
+local function start_task(fn)
+    for _, stack in ipairs({ 0x4000, 0x2000 }) do
+        if pcall(task.create, fn, 0x1c, stack) then return true end
+    end
+    return false
+end
+
 -- which tab a setting really lives in (LUMEN items live in other tabs)
 local REAL_TAB =
 {
@@ -416,17 +426,17 @@ function lmenu.start(reason)
     -- a start that never ran is forgotten after 5 s, so a press is never lost for good
     if lmenu.starting and dryos.ms_clock - lmenu.starting < 5000 then return end
     lmenu.starting = dryos.ms_clock
-    local ok, err = pcall(task.create, function()
+    local started = start_task(function()
         local waited = 0
         while not menu.visible and waited < 2000 do
             task.yield(50); waited = waited + 50
         end
         lmenu.starting = false
         if menu.visible then lmenu:run() end
-    end, 0x1c, 0x8000)
-    if not ok then
+    end)
+    if not started then
         lmenu.starting = false
-        display.notify_box("LUMEN Menu: " .. tostring(err), 4000)
+        display.notify_box("LUMEN Menu: not enough free memory to open (turn off other scripts)", 5000)
     end
 end
 

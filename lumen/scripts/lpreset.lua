@@ -90,6 +90,15 @@ local PRESETS =
 
 local ORDER = { "Everyday", "Portrait", "Landscape", "Cinema", "Astro", "Clean" }
 
+-- Start a task with a small stack (the 550D can't spare 64 KB task stacks:
+-- that fails with "task not started"). 16 KB, then 8 KB.
+local function start_task(fn)
+    for _, stack in ipairs({ 0x4000, 0x2000 }) do
+        if pcall(task.create, fn, 0x1c, stack) then return true end
+    end
+    return false
+end
+
 local function set_exposure(p)
     if p.iso == nil and p.shutter == nil and p.aperture == nil then
         return 0, 0, ""
@@ -155,7 +164,9 @@ lpreset_menu = menu.new
             help    = "Apply the selected preset now.",
             select  = function(this)
                 local name = lpreset_menu.submenu["Preset"].value
-                task.create(function() apply(name) end)
+                if not start_task(function() apply(name) end) then
+                    display.notify_box("Presets: not enough free memory (turn off other scripts)", 5000)
+                end
             end,
             info    = function(this)
                 local p = PRESETS[lpreset_menu.submenu["Preset"].value]

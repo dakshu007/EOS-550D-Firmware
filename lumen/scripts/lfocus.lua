@@ -39,6 +39,16 @@ local AUTO_AF_MS =
 local AUTO_CHOICES = { "OFF", "Every 2 s", "Every 5 s", "Every 10 s" }
 local AUTO_AF_LIMIT_MS = 10 * 60 * 1000
 
+-- Start a task with a small stack. The 550D has very little memory for
+-- task stacks: 32-64 KB requests fail with "task not started". Try 16 KB,
+-- then 8 KB (ML's own C tasks use 4-8 KB). Returns true if started.
+local function start_task(fn)
+    for _, stack in ipairs({ 0x4000, 0x2000 }) do
+        if pcall(task.create, fn, 0x1c, stack) then return true end
+    end
+    return false
+end
+
 -- Canon Live View AF method: 0 = Quick, 1 = Live, 2 = Face detection, nil = unknown
 lfocus_af_system = nil
 lfocus_heartbeat = nil     -- ms clock of the monitor's last loop (nil = never ran)
@@ -56,7 +66,8 @@ local function play_chime_now(name)
 end
 
 local function monitor_status()
-    if lfocus_heartbeat == nil then return "not started" end
+    if lfocus_start_failed then return "not started (memory)" end
+    if lfocus_heartbeat == nil then return "starting" end
     if dryos.ms_clock - lfocus_heartbeat > 3000 then return "stopped" end
     if lfocus_last_error then return "running (had an error)" end
     return "running"
@@ -217,4 +228,4 @@ local function monitor()
     end
 end
 
-task.create(monitor, 0x1c, 0x8000)   -- 32 KB stack is plenty for this loop
+lfocus_start_failed = not start_task(monitor)

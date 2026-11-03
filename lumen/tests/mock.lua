@@ -12,8 +12,15 @@ msleep = function(ms) clock = clock + ms end
 
 tasks = {}
 sleeping = {}
+mock_max_stack = 0x4000      -- like the real camera: 32/64 KB task stacks fail
 task = {
-    create = function(fn) table.insert(tasks, coroutine.create(fn)) end,
+    -- like the 550D: task stacks bigger than mock_max_stack can't be allocated
+    -- (ML then raises "task not started")
+    create = function(fn, priority, stack)
+        stack = stack or 0x10000
+        if mock_max_stack and stack > mock_max_stack then error("task not started") end
+        table.insert(tasks, coroutine.create(fn))
+    end,
     -- like ML (lua_task.c): task.yield fails if another task of the same
     -- script is already sleeping inside task.yield
     yield = function(ms)

@@ -531,4 +531,51 @@ lquick_menu.select(); run_tasks(3)
 check(key_results[1].passed and menu.visible == false and lquick.open == false, "Trash closes Quick instantly")
 tasks = {}; sleeping = {}
 
+----------------------------------------------------------------- low memory
+-- the real 550D refused 32-64 KB task stacks; everything must start with 16 KB
+for _, f in ipairs({ "lfocus", "lmenu", "lquick", "lpreset", "lastro", "ltlapse" }) do
+    local src = io.open(root .. "/" .. f .. ".lua"):read("a")
+    for stack in src:gmatch("task%.create%([^)]-,%s*0x%x+,%s*(0x%x+)%)") do
+        check(tonumber(stack) <= 0x4000, f .. " asks for at most 16 KB of task stack (" .. stack .. ")")
+    end
+    check(not src:match("task%.create%(%s*function") and not src:match("task%.create%(monitor%)"),
+        f .. " never starts a task with the 64 KB default stack")
+end
+
+-- only 8 KB available: screens still open (fallback)
+mock_max_stack = 0x2000
+tasks = {}; sleeping = {}
+dofile(root .. "/lquick.lua")
+menu.visible = true; log = {}
+lquick_menu.select(); run_tasks(2)
+check(lquick.open, "Quick opens with only 8 KB available (fallback stack)")
+key_queue = { KEY.TRASH }; run_tasks(3)
+tasks = {}; sleeping = {}
+dofile(root .. "/lfocus.lua")
+ticks(2)
+check(lfocus_menu.submenu["Status"].rinfo() == "running", "LUMEN Focus background starts with 8 KB")
+tasks = {}; sleeping = {}
+
+-- no memory at all: clear messages instead of silence
+mock_max_stack = 0x1000
+dofile(root .. "/lquick.lua")
+menu.visible = true; log = {}
+lquick_menu.select(); run_tasks(2)
+check(not lquick.open and log[#log] and log[#log]:match("not enough free memory"),
+    "Quick explains when there is no memory to open")
+dofile(root .. "/lmenu.lua")
+log = {}
+lmenu_menu.submenu["Open LUMEN Menu"].select(); run_tasks(2)
+check(log[#log] and log[#log]:match("not enough free memory"), "LUMEN Menu explains when there is no memory")
+check(lmenu.starting == false, "a failed start never blocks the next try")
+dofile(root .. "/lfocus.lua")
+check(lfocus_menu.submenu["Status"].rinfo() == "not started (memory)", "Status says the background part couldn't start")
+log = {}
+lfocus_menu.submenu["Focus Chime"].value = "Soft"
+lfocus_menu.submenu["Test Chime"].select()
+check(count_beeps() == 1, "Test Chime still works with no memory for tasks")
+mock_max_stack = 0x4000
+menu.visible = false
+tasks = {}; sleeping = {}
+
 print("\nall LUMEN script tests passed (including Quick, Timelapse and LUMEN Menu)")

@@ -35,6 +35,16 @@ lquick = { sel = 1, open = false, states = {}, values = {} }
 -- redraw, tile states cached (only the toggled tile is re-read)
 local KEY_POLL_MS = 20
 
+-- Start a task with a small stack. The 550D has very little memory for
+-- task stacks: 32-64 KB requests fail with "task not started". Try 16 KB,
+-- then 8 KB (ML's own C tasks use 4-8 KB). Returns true if started.
+local function start_task(fn)
+    for _, stack in ipairs({ 0x4000, 0x2000 }) do
+        if pcall(task.create, fn, 0x1c, stack) then return true end
+    end
+    return false
+end
+
 local function tile_state(t)
     local ok, v = pcall(menu.get, t[2], t[3], 0)
     if not ok or v == nil then return nil end
@@ -192,6 +202,8 @@ lquick_menu = menu.new
     help2  = "Tip: star it (Prefs > Customize Menus) to put it in My Menu.",
     icon_type = ICON_TYPE.ACTION,
     select = function(this)
-        task.create(function() lquick:run() end, 0x1c, 0x8000)
+        if not start_task(function() lquick:run() end) then
+            display.notify_box("LUMEN Quick: not enough free memory to open (turn off other scripts)", 5000)
+        end
     end,
 }

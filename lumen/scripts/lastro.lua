@@ -11,6 +11,15 @@ require("config")
 
 local CROP = 1.6
 
+-- Start a task with a small stack (the 550D can't spare 64 KB task stacks:
+-- that fails with "task not started"). 16 KB, then 8 KB.
+local function start_task(fn)
+    for _, stack in ipairs({ 0x4000, 0x2000 }) do
+        if pcall(task.create, fn, 0x1c, stack) then return true end
+    end
+    return false
+end
+
 local RULES =
 {
     ["500 rule"]           = 500,
@@ -50,7 +59,7 @@ lastro_menu = menu.new
             name    = "Star Focus",
             help    = "Live View 10x zoom: focus manually until the star is a tiny dot.",
             select  = function(this)
-                task.create(function()
+                local ok = start_task(function()
                     if not (lv.enabled and lv.running) then
                         display.notify_box("Turn on Live View first", 2000)
                         return
@@ -64,6 +73,9 @@ lastro_menu = menu.new
                         display.notify_box("Zoom not available here: press the zoom button", 3000)
                     end
                 end)
+                if not ok then
+                    display.notify_box("Astro: not enough free memory (turn off other scripts)", 5000)
+                end
             end,
         },
     },
