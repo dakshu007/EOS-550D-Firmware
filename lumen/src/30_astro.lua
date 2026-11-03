@@ -7,18 +7,9 @@
 --
 -- Part of LUMEN for EOS 550D. GPL v2 or later.
 
-require("config")
 
 local CROP = 1.6
 
--- Start a task with a small stack (the 550D can't spare 64 KB task stacks:
--- that fails with "task not started"). 16 KB, then 8 KB.
-local function start_task(fn)
-    for _, stack in ipairs({ 0x4000, 0x2000 }) do
-        if pcall(task.create, fn, 0x1c, stack) then return true end
-    end
-    return false
-end
 
 local RULES =
 {
@@ -59,7 +50,7 @@ lastro_menu = menu.new
             name    = "Star Focus",
             help    = "Live View 10x zoom: focus manually until the star is a tiny dot.",
             select  = function(this)
-                local ok = start_task(function()
+                local ok = lumen.run(function()
                     if not (lv.enabled and lv.running) then
                         display.notify_box("Turn on Live View first", 2000)
                         return
@@ -95,7 +86,7 @@ local function valid(choices, v)
     return false
 end
 
-lastro_cfg = config.create({ limit = "OFF", rule = "500 rule" })
+lastro_cfg = lumen.config({ limit = "OFF", rule = "500 rule" })
 lastro_menu.submenu["Star Limit"].value =
     valid(LIMIT_CHOICES, lastro_cfg.data.limit) and lastro_cfg.data.limit or "OFF"
 lastro_menu.submenu["Rule"].value =

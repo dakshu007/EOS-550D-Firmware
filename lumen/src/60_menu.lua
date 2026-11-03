@@ -15,12 +15,10 @@
 -- Safety: only items marked `toggle` are ever changed from this screen,
 -- and only between OFF and ON. Everything else opens in the normal
 -- Magic Lantern menu. Settings that don't exist on this camera are hidden.
--- No permanent background task: the screen runs in a task started when you
--- open it, and only that task ever calls task.yield.
+-- The screen runs inside the shared LUMEN background task (lumen.run).
 --
 -- Part of LUMEN for EOS 550D. GPL v2 or later.
 
-require("config")
 
 -- { ML entry name, short description, toggle? }
 local TABS =
@@ -136,15 +134,6 @@ lmenu = { tab = 1, row = 1, top = 1, open = false, starting = false, tabs = {}, 
 -- before one redraw, and values are cached (only the changed item is re-read)
 local KEY_POLL_MS = 20
 
--- Start a task with a small stack. The 550D has very little memory for
--- task stacks: 32-64 KB requests fail with "task not started". Try 16 KB,
--- then 8 KB (ML's own C tasks use 4-8 KB). Returns true if started.
-local function start_task(fn)
-    for _, stack in ipairs({ 0x4000, 0x2000 }) do
-        if pcall(task.create, fn, 0x1c, stack) then return true end
-    end
-    return false
-end
 
 -- which tab a setting really lives in (LUMEN items live in other tabs)
 local REAL_TAB =
@@ -158,7 +147,31 @@ local function real_tab(tab_name, item_name)
     return REAL_TAB[item_name] or tab_name
 end
 
+-- LUMEN's own items live in this same script: asking Magic Lantern for their
+-- value would call back into this (busy) script and stall, so read them here.
+local LUMEN_VALUE =
+{
+    ["LUMEN Quick"]     = function() return "Open" end,
+    ["LUMEN Focus"]     = function()
+        local c = lfocus_menu.submenu["Focus Chime"].value
+        local a = lfocus_menu.submenu["Auto AF"].value
+        if a ~= "OFF" then return a end
+        return (c == "OFF") and "OFF" or ("Chime: " .. c)
+    end,
+    ["LUMEN Presets"]   = function() return lpreset_menu.submenu["Preset"].value end,
+    ["LUMEN Astro"]     = function()
+        return (lastro_menu.submenu["Star Limit"].value == "ON") and "Star Limit ON" or "OFF"
+    end,
+    ["LUMEN Timelapse"] = function() return ltlapse.summary() or "OFF" end,
+}
+
 local function get_str(tab, name)
+    local own = LUMEN_VALUE[name]
+    if own then
+        local ok, v = pcall(own)
+        if ok and v ~= nil then return tostring(v) end
+        return nil
+    end
     local ok, v = pcall(menu.get, real_tab(tab, name), name)
     if ok and v ~= nil then return tostring(v) end
     return nil
@@ -198,33 +211,7 @@ function lmenu:refresh_tab(i)
 end
 
 
--- Key capture while the screen is open. Trash and MENU are NOT blocked, so
--- Magic Lantern closes its menu at once as usual (and this screen with it).
--- Half/full shutter also pass. Everything else is queued for this screen.
--- The previous key handler (the Trash hook) is restored only if replaced.
-local function capture_start(self)
-    self.queue, self.leaving = {}, false
-    self.old_keypress = event.keypress
-    event.keypress = function(key)
-        if key == 0 then return true end
-        if key == KEY.TRASH or key == KEY.MENU then
-            self.leaving = true
-            return true
-        end
-        if key <= KEY.UNPRESS_FULLSHUTTER then return true end
-        table.insert(self.queue, key)
-        return false
-    end
-    self.capturing = true
-end
-
-local function capture_stop(self)
-    if self.capturing then
-        event.keypress = self.old_keypress
-        self.capturing = false
-    end
-    self.queue = {}
-end
+local capture_start, capture_stop = lumen.capture_start, lumen.capture_stop
 
 local function clamp_rows(self)
     local items = self.tabs[self.tab].items
@@ -351,11 +338,13 @@ function lmenu:run()
     if self.open then return end
     self.open = true
     local ok, err = pcall(function()
+        -- block the classic menu's redraws first, so it never waits on this
+        -- script while the settings are read
+        menu.block(true)
         self:build()
         if #self.tabs == 0 then error("no settings found") end
         self:refresh_tab(self.tab)
         clamp_rows(self)
-        menu.block(true)
         capture_start(self)
         self:draw()
         local running = true
@@ -410,7 +399,7 @@ lmenu_menu = menu.new
     end,
 }
 
-lmenu_cfg = config.create({ trash = "Magic Lantern menu" })
+lmenu_cfg = lumen.config({ trash = "Magic Lantern menu" })
 lmenu_menu.submenu["Trash button opens"].value =
     (lmenu_cfg.data.trash == "LUMEN Menu") and "LUMEN Menu" or "Magic Lantern menu"
 lmenu_cfg.saving = function(self)
@@ -426,7 +415,7 @@ function lmenu.start(reason)
     -- a start that never ran is forgotten after 5 s, so a press is never lost for good
     if lmenu.starting and dryos.ms_clock - lmenu.starting < 5000 then return end
     lmenu.starting = dryos.ms_clock
-    local started = start_task(function()
+    local started = lumen.run(function()
         local waited = 0
         while not menu.visible and waited < 2000 do
             task.yield(50); waited = waited + 50

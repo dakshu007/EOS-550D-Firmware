@@ -23,8 +23,10 @@ jobs:
           v="$(cat lumen/VERSION)"
           grep -q "#define LUMEN_VERSION \"$v\"" lumen/patches/0001-lumen-theme.patch \
             || { echo "LUMEN_VERSION in the patch does not match lumen/VERSION ($v)"; exit 1; }
-          for f in lumen/scripts/*.lua; do luac5.3 -p "$f"; done
-          lua5.3 lumen/tests/test.lua lumen/scripts lumen/tests
+          for f in lumen/src/*.lua; do luac5.3 -p "$f"; done
+          lumen/make_bundle.sh /tmp/lumen.lua
+          luac5.3 -p /tmp/lumen.lua
+          lua5.3 lumen/tests/test.lua /tmp/lumen.lua lumen/tests
 
       - name: Build LUMEN for EOS 550D (fw 1.0.9)
         run: ./build.sh

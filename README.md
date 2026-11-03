@@ -10,7 +10,7 @@ never modified. To go back to the stock camera, start it with a normal card.
 - **Based on:** Magic Lantern `ed3e7c0df` (`2025_release_01`), the build installed on the camera
 - **Design:** the LUMEN canvas, with all screens drawn at the native 720 × 480 resolution
 
-## Status: v0.3.2
+## Status: v0.3.3
 
 The full feature list, including the Canon settings for focus beeps and AF, is in **[FEATURES.md](FEATURES.md)**.
 
@@ -42,7 +42,7 @@ Every push is tested and built automatically by GitHub Actions:
 3. Check that the download is intact:
 
    ```bash
-   shasum -a 256 LUMEN-550D.109-0.3.2.zip
+   shasum -a 256 LUMEN-550D.109-0.3.3.zip
    ```
 
    Compare the result with the `.sha256` file. (It proves the file wasn't damaged in transit. It
@@ -83,6 +83,19 @@ and `ML/LOGS`.
    You'll find them under **Prefs → LUMEN Menu**, **Focus → LUMEN Focus**, **Overlay → LUMEN Quick**, **Shoot → LUMEN Presets**,
    **Shoot → LUMEN Astro** and **Shoot → LUMEN Timelapse**.
 
+### Upgrading from LUMEN 0.3.2 or older
+
+Older versions used six separate scripts, which filled the camera's Lua memory. `rsync` never
+deletes, so remove the old scripts and their autorun flags once (card in the Mac):
+
+```bash
+cd /Volumes/EOS_DIGITAL/ML/scripts && rm -f LFOCUS.LUA LPRESET.LUA LASTRO.LUA LQUICK.LUA LTLAPSE.LUA LMENU.LUA
+```
+
+```bash
+cd /Volumes/EOS_DIGITAL/ML/SETTINGS && rm -f LFOCUS.LEN LPRESET.LEN LASTRO.LEN LQUICK.LEN LTLAPSE.LEN LMENU.LEN LFOCUS.CFG LPRESET.CFG LASTRO.CFG LMENU.CFG
+```
+
 ### If something goes wrong
 
 - **The camera doesn't start or freezes:** remove the battery **and** the card, wait a minute,
@@ -95,8 +108,7 @@ and `ML/LOGS`.
 
 - **After a crash,** Magic Lantern skips loading modules on the next start, as a safety measure.
   Restart once more to load them again.
-- **To turn off the LUMEN scripts only:** delete `ML/SETTINGS/LFOCUS.LEN`, `LPRESET.LEN`,
-  `LASTRO.LEN`, `LQUICK.LEN`, `LTLAPSE.LEN` and `LMENU.LEN` on the card. Delete `ML/SETTINGS/LUA.EN` too to stop loading Lua.
+- **To turn off the LUMEN script only:** delete `ML/SETTINGS/LUMEN.LEN` on the card. Delete `ML/SETTINGS/LUA.EN` too to stop loading Lua.
 - **A Canon setting looks changed** (for example the AF button custom function after a battery
   pull during autofocus): fix it in the Canon menu, or use Canon's *Clear all camera settings*.
 - **To boot stock firmware once:** hold **SET** while turning the camera on.
@@ -111,7 +123,7 @@ sudo apt install gcc-arm-none-eabi libnewlib-arm-none-eabi python3-docutils make
 ```
 
 ```bash
-lua5.3 lumen/tests/test.lua lumen/scripts lumen/tests
+lumen/make_bundle.sh /tmp/lumen.lua && lua5.3 lumen/tests/test.lua /tmp/lumen.lua lumen/tests
 ```
 
 ```bash
@@ -128,8 +140,11 @@ build.sh                    fetch Magic Lantern, apply patches, add scripts, bui
 FEATURES.md                 everything LUMEN can (and can't) do
 lumen/VERSION               LUMEN version
 lumen/patches/              LUMEN changes to Magic Lantern's C code
-lumen/scripts/              LUMEN features in Lua (Menu, Focus, Presets, Astro, Quick, Timelapse)
-lumen/card/                 extra card files: autorun flags in ML/SETTINGS
+lumen/src/                  LUMEN features in Lua, one file per feature (core, Focus,
+                            Presets, Astro, Timelapse, Quick, Menu, main)
+lumen/make_bundle.sh        joins lumen/src/ into ONE script (ML/scripts/lumen.lua):
+                            one Lua state and one background task, to fit the 550D's memory
+lumen/card/                 extra card files: autorun flags in ML/SETTINGS (LUA.EN, LUMEN.LEN)
 lumen/tests/                tests for the Lua scripts, run against a mock camera API
 .github/workflows/build.yml tests and builds on every push
 ```

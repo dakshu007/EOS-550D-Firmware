@@ -3,7 +3,7 @@
 #
 # What it does:
 #   1. Fetches the exact Magic Lantern source this project is based on
-#   2. Applies the LUMEN patches from lumen/patches/ and adds lumen/scripts/
+#   2. Applies the LUMEN patches from lumen/patches/ and adds lumen/src/ as one script
 #   3. Builds the 550D.109 platform and adds lumen/card/ (autorun flags)
 #   4. Writes dist/LUMEN-550D.109-<version>.zip (+ .sha256)
 #
@@ -42,8 +42,8 @@ for p in "$ROOT"/lumen/patches/*.patch; do
     git -C "$SRC" apply --whitespace=nowarn "$p"
 done
 
-echo "==> Adding LUMEN scripts"
-cp "$ROOT"/lumen/scripts/*.lua "$SRC/scripts/"
+echo "==> Adding LUMEN script (one bundle: ML/scripts/lumen.lua)"
+"$ROOT/lumen/make_bundle.sh" "$SRC/scripts/lumen.lua"
 
 echo "==> Building 550D.109"
 JOBS="$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2)"

@@ -4,8 +4,7 @@
 -- Open it from Overlay > LUMEN Quick (tip: star it so it appears in My Menu).
 -- Arrows move, SET toggles, Q closes, Trash / MENU close the menu.
 --
--- Only one task (the screen loop) ever calls task.yield: ML does not allow
--- task.yield from two tasks of the same script at once.
+-- The screen runs inside the shared LUMEN background task (lumen.run).
 --
 -- Part of LUMEN for EOS 550D. GPL v2 or later.
 
@@ -35,15 +34,6 @@ lquick = { sel = 1, open = false, states = {}, values = {} }
 -- redraw, tile states cached (only the toggled tile is re-read)
 local KEY_POLL_MS = 20
 
--- Start a task with a small stack. The 550D has very little memory for
--- task stacks: 32-64 KB requests fail with "task not started". Try 16 KB,
--- then 8 KB (ML's own C tasks use 4-8 KB). Returns true if started.
-local function start_task(fn)
-    for _, stack in ipairs({ 0x4000, 0x2000 }) do
-        if pcall(task.create, fn, 0x1c, stack) then return true end
-    end
-    return false
-end
 
 local function tile_state(t)
     local ok, v = pcall(menu.get, t[2], t[3], 0)
@@ -78,33 +68,7 @@ local function toggle(t)
     return ok and result ~= nil
 end
 
--- Key capture while the screen is open. Trash and MENU are NOT blocked, so
--- Magic Lantern closes its menu at once as usual (and this screen with it).
--- Half/full shutter also pass. Everything else is queued for this screen.
--- The previous key handler is restored only if it was replaced.
-local function capture_start(self)
-    self.queue, self.leaving = {}, false
-    self.old_keypress = event.keypress
-    event.keypress = function(key)
-        if key == 0 then return true end
-        if key == KEY.TRASH or key == KEY.MENU then
-            self.leaving = true
-            return true
-        end
-        if key <= KEY.UNPRESS_FULLSHUTTER then return true end
-        table.insert(self.queue, key)
-        return false
-    end
-    self.capturing = true
-end
-
-local function capture_stop(self)
-    if self.capturing then
-        event.keypress = self.old_keypress
-        self.capturing = false
-    end
-    self.queue = {}
-end
+local capture_start, capture_stop = lumen.capture_start, lumen.capture_stop
 
 
 function lquick:refresh(i)
@@ -202,7 +166,11 @@ lquick_menu = menu.new
     help2  = "Tip: star it (Prefs > Customize Menus) to put it in My Menu.",
     icon_type = ICON_TYPE.ACTION,
     select = function(this)
-        if not start_task(function() lquick:run() end) then
+        -- ignore repeat presses while a request is already waiting or open
+        if lquick.open or (lquick.pending and dryos.ms_clock - lquick.pending < 5000) then return end
+        lquick.pending = dryos.ms_clock
+        if not lumen.run(function() lquick.pending = nil; lquick:run() end) then
+            lquick.pending = nil
             display.notify_box("LUMEN Quick: not enough free memory to open (turn off other scripts)", 5000)
         end
     end,

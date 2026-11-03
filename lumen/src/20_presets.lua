@@ -8,7 +8,6 @@
 --
 -- Part of LUMEN for EOS 550D. GPL v2 or later.
 
-require("config")
 
 -- ML menu settings per preset: { menu, entry, value }
 local OVERLAYS_ON =
@@ -90,14 +89,6 @@ local PRESETS =
 
 local ORDER = { "Everyday", "Portrait", "Landscape", "Cinema", "Astro", "Clean" }
 
--- Start a task with a small stack (the 550D can't spare 64 KB task stacks:
--- that fails with "task not started"). 16 KB, then 8 KB.
-local function start_task(fn)
-    for _, stack in ipairs({ 0x4000, 0x2000 }) do
-        if pcall(task.create, fn, 0x1c, stack) then return true end
-    end
-    return false
-end
 
 local function set_exposure(p)
     if p.iso == nil and p.shutter == nil and p.aperture == nil then
@@ -164,7 +155,7 @@ lpreset_menu = menu.new
             help    = "Apply the selected preset now.",
             select  = function(this)
                 local name = lpreset_menu.submenu["Preset"].value
-                if not start_task(function() apply(name) end) then
+                if not lumen.run(function() apply(name) end) then
                     display.notify_box("Presets: not enough free memory (turn off other scripts)", 5000)
                 end
             end,
@@ -181,7 +172,7 @@ lpreset_menu = menu.new
 
 -- settings: only the chosen preset is saved; a missing or unknown value
 -- falls back to Everyday, so future versions can add items safely
-lpreset_cfg = config.create({ preset = "Everyday" })
+lpreset_cfg = lumen.config({ preset = "Everyday" })
 local saved = lpreset_cfg.data.preset
 lpreset_menu.submenu["Preset"].value = PRESETS[saved] and saved or "Everyday"
 lpreset_cfg.saving = function(self)

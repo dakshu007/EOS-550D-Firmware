@@ -1,7 +1,17 @@
--- Exercise LUMEN scripts against the mock API.
--- Run: lua5.3 lumen/tests/test.lua lumen/scripts lumen/tests
-local root = arg[1]
+-- Exercise the LUMEN bundle (one script, like on the camera) against the mock API.
+-- Run: lumen/make_bundle.sh /tmp/lumen.lua && lua5.3 lumen/tests/test.lua /tmp/lumen.lua lumen/tests
+local bundle = arg[1]
 dofile(arg[2] .. "/mock.lua")
+
+-- (re)load LUMEN from scratch, like a camera restart
+function load_lumen()
+    tasks = {}; sleeping = {}; lv.infos = {}
+    dofile(bundle)
+end
+
+local function info_named(name)
+    for _, i in ipairs(lv.infos) do if i.name == name then return i end end
+end
 
 local function check(cond, msg)
     if not cond then error("FAIL: " .. msg) end
@@ -17,7 +27,7 @@ end
 local function ticks(n) for _ = 1, n do run_tasks(1) end end
 
 ----------------------------------------------------------------- lfocus
-dofile(root .. "/lfocus.lua")
+load_lumen()
 local F = lfocus_menu.submenu
 check(F["Focus Chime"].value == "Bright", "default chime is Bright")
 check(F["Auto AF"].value == "OFF", "Auto AF starts OFF")
@@ -70,9 +80,9 @@ lens = setmetatable({}, { __index = function(t, k)
     return real_lens[k]
 end })
 ticks(2)
-check(F["Status"].rinfo() == "running (had an error)" and lfocus_last_error:match("test failure"),
+check(F["Status"].rinfo() == "running (had an error)" and lumen.last_error:match("test failure"),
     "an error is recorded and the background task keeps running")
-lens = real_lens; lfocus_last_error = nil
+lens = real_lens; lumen.last_error = nil
 ticks(2)
 check(F["Status"].rinfo() == "running", "keeps running after the error")
 
@@ -130,21 +140,21 @@ lfocus_cfg:saving()
 check(lfocus_cfg.data.auto == "OFF", "Auto AF is never saved as ON")
 tasks = {}; sleeping = {}
 mock_saved_cfg = { chime = "Crystal", auto = "Every 2 s" }
-dofile(root .. "/lfocus.lua")
+load_lumen()
 check(lfocus_menu.submenu["Focus Chime"].value == "Crystal", "saved chime is restored")
 check(lfocus_menu.submenu["Auto AF"].value == "OFF", "Auto AF is OFF after reboot even if saved ON")
 tasks = {}; sleeping = {}
 mock_saved_cfg = { chime = "Banana" }                 -- bad value from an old/broken file
-dofile(root .. "/lfocus.lua")
+load_lumen()
 check(lfocus_menu.submenu["Focus Chime"].value == "Bright", "unknown saved chime falls back to Bright")
 tasks = {}; sleeping = {}
 mock_saved_cfg = {}                                   -- file with missing keys
-dofile(root .. "/lfocus.lua")
+load_lumen()
 check(lfocus_menu.submenu["Focus Chime"].value == "Bright", "missing saved keys fall back to defaults")
 tasks = {}; sleeping = {}
 
 ----------------------------------------------------------------- lpreset
-dofile(root .. "/lpreset.lua")
+load_lumen()
 check(lpreset_menu.update(lpreset_menu) == "Everyday", "default preset is Everyday")
 
 local function apply(name)
@@ -196,21 +206,21 @@ lpreset_menu.submenu["Preset"].value = "Astro"
 lpreset_cfg:saving()
 tasks = {}; sleeping = {}
 mock_saved_cfg = lpreset_cfg.data
-dofile(root .. "/lpreset.lua")
+load_lumen()
 check(lpreset_menu.submenu["Preset"].value == "Astro", "saved preset is restored")
 tasks = {}; sleeping = {}
 mock_saved_cfg = { preset = "Disco" }
-dofile(root .. "/lpreset.lua")
+load_lumen()
 check(lpreset_menu.submenu["Preset"].value == "Everyday", "unknown saved preset falls back to Everyday")
 tasks = {}; sleeping = {}
 
 ----------------------------------------------------------------- lastro
 lv.infos = {}
-dofile(root .. "/lastro.lua")
+load_lumen()
 check(lastro_menu.update(lastro_menu) == "OFF", "Star Limit off by default")
 lastro_menu.submenu["Star Limit"].value = "ON"
 lens.focal_length = 18
-local info = lv.infos[1]
+local info = info_named("LUMEN Star Limit")
 info.update(info)
 check(info.value == "STAR 17s", "18 mm: 500/(18*1.6) = 17 s, got " .. info.value)
 lastro_menu.submenu["Rule"].value = "300 rule (pixel)"
@@ -247,12 +257,12 @@ lastro_cfg:saving()
 tasks = {}; sleeping = {}
 mock_saved_cfg = lastro_cfg.data
 lv.infos = {}
-dofile(root .. "/lastro.lua")
+load_lumen()
 check(lastro_menu.submenu["Rule"].value == "400 rule (sharper)", "saved rule is restored")
 tasks = {}; sleeping = {}
 mock_saved_cfg = { limit = 7, rule = "999 rule" }
 lv.infos = {}
-dofile(root .. "/lastro.lua")
+load_lumen()
 check(lastro_menu.submenu["Star Limit"].value == "OFF" and lastro_menu.submenu["Rule"].value == "500 rule",
     "bad saved astro values fall back to defaults")
 
@@ -260,11 +270,12 @@ check(lastro_menu.submenu["Star Limit"].value == "OFF" and lastro_menu.submenu["
 
 ----------------------------------------------------------------- lquick
 tasks = {}; sleeping = {}
-dofile(root .. "/lquick.lua")
+load_lumen()
 check(lquick_menu.parent == "Overlay" and lquick_menu.name == "LUMEN Quick", "LUMEN Quick is in the Overlay menu")
 
 menu_values = {}
 menu.visible = true
+local trash_hook = event.keypress              -- LUMEN Menu's Trash shortcut (same script)
 key_queue = { KEY.RIGHT, KEY.SET, KEY.Q }      -- move to Zebras, toggle it, close
 draw_calls = 0; menu_set_calls = {}
 lquick_menu.select()
@@ -272,8 +283,9 @@ for _ = 1, 20 do run_tasks(1) end
 check(menu_values["Overlay/Zebras"] == 1, "SET turns the selected overlay on (Zebras)")
 check(menu_set_calls[1] == "Overlay/Zebras=1", "only the selected overlay is changed")
 check(draw_calls == 1, "keys that arrive together are handled in one pass, no wasted redraws (" .. draw_calls .. ")")
-check(menu_blocked == false and event.keypress == nil, "closing gives the menu and buttons back")
-check(lquick.open == false and #tasks == 0, "the Quick screen task ends after closing")
+check(menu_blocked == false and event.keypress == trash_hook and trash_hook ~= nil,
+    "closing gives the menu and buttons back (Trash shortcut restored)")
+check(lquick.open == false and #tasks == 1, "the Quick screen ends after closing (only the LUMEN task remains)")
 
 lquick.sel = 1
 key_queue = { KEY.RIGHT, KEY.SET, KEY.SET }  -- Zebras off again, then on
@@ -311,8 +323,8 @@ tasks = {}; sleeping = {}
 
 ----------------------------------------------------------------- ltlapse
 lv.infos = {}
-dofile(root .. "/ltlapse.lua")
-local tl_info = lv.infos[1]
+load_lumen()
+local tl_info = info_named("LUMEN Timelapse")
 interval.running = false
 tl_info.update(tl_info)
 check(tl_info.value == "", "timelapse info hidden when the intervalometer is off")
@@ -377,7 +389,7 @@ menu.select = function(m, e) table.insert(menu_select_calls, m .. "/" .. tostrin
 local closed = 0
 menu.close = function() closed = closed + 1; menu.visible = false end
 
-dofile(root .. "/lmenu.lua")
+load_lumen()
 check(lmenu_menu.parent == "Prefs", "LUMEN Menu settings live in Prefs")
 check(lmenu_menu.submenu["Trash button opens"].value == "Magic Lantern menu", "Trash keeps opening the normal ML menu by default")
 
@@ -466,14 +478,14 @@ lmenu_cfg:saving()
 check(lmenu_cfg.data.trash == "LUMEN Menu", "Trash setting is saved")
 tasks = {}; sleeping = {}
 mock_saved_cfg = { trash = "Banana" }
-dofile(root .. "/lmenu.lua")
+load_lumen()
 check(lmenu_menu.submenu["Trash button opens"].value == "Magic Lantern menu", "bad saved value falls back to the ML menu")
 tasks = {}; sleeping = {}
 menu.get = real_get
 
 -- fresh LUMEN Menu for the following tests
 tasks = {}; sleeping = {}
-dofile(root .. "/lmenu.lua")
+load_lumen()
 
 -- buttons other than Trash/MENU never reach the hidden ML menu while LUMEN Menu is open
 menu.visible = true; key_results = {}
@@ -499,14 +511,14 @@ key_queue = { KEY.TRASH }; run_tasks(3)
 
 -- if the screen can't open, the Trash hook stays (event.keypress not lost)
 local hook = event.keypress
-local saved_get = menu.get
-menu.get = function() return nil end              -- camera reports no settings
-lmenu.built = false
+local saved_draw = display.draw
+display.draw = function() error("draw failed") end   -- an error after button capture started
 menu.visible = true; log = {}
 lmenu_menu.submenu["Open LUMEN Menu"].select(); run_tasks(3)
 check(event.keypress == hook and hook ~= nil, "a failed open leaves the Trash hook in place")
+check(menu_blocked == false, "a failed open unblocks the menu")
 check(log[#log] and log[#log]:match("LUMEN Menu:"), "a failed open is reported, not silent")
-menu.get = saved_get; lmenu.built = false; menu.visible = false
+display.draw = saved_draw; menu.visible = false
 
 -- its own Prefs entry is not listed inside LUMEN Menu
 lmenu:build()
@@ -519,7 +531,7 @@ end
 
 -- Quick: Global Draw also keeps its mode
 tasks = {}; sleeping = {}
-dofile(root .. "/lquick.lua")
+load_lumen()
 menu_values["Overlay/Global Draw"] = 3
 menu.visible = true; lquick.sel = 1
 key_queue = { KEY.SET, KEY.SET, KEY.Q }
@@ -533,42 +545,43 @@ tasks = {}; sleeping = {}
 
 ----------------------------------------------------------------- low memory
 -- the real 550D refused 32-64 KB task stacks; everything must start with 16 KB
-for _, f in ipairs({ "lfocus", "lmenu", "lquick", "lpreset", "lastro", "ltlapse" }) do
-    local src = io.open(root .. "/" .. f .. ".lua"):read("a")
-    for stack in src:gmatch("task%.create%([^)]-,%s*0x%x+,%s*(0x%x+)%)") do
-        check(tonumber(stack) <= 0x4000, f .. " asks for at most 16 KB of task stack (" .. stack .. ")")
-    end
-    check(not src:match("task%.create%(%s*function") and not src:match("task%.create%(monitor%)"),
-        f .. " never starts a task with the 64 KB default stack")
+do
+    local src = io.open(bundle):read("a")
+    local creates = 0
+    for _ in src:gmatch("task%.create") do creates = creates + 1 end
+    check(creates == 1, "the whole bundle starts exactly one task (" .. creates .. ")")
+    check(src:match("pcall%(task%.create, monitor, 0x1c, stack%)") ~= nil,
+        "that one task is started with an explicit small stack")
+    check(src:match("{ 0x4000, 0x2000 }") ~= nil, "stack sizes are 16 KB then 8 KB")
 end
 
 -- only 8 KB available: screens still open (fallback)
 mock_max_stack = 0x2000
 tasks = {}; sleeping = {}
-dofile(root .. "/lquick.lua")
+load_lumen()
 menu.visible = true; log = {}
 lquick_menu.select(); run_tasks(2)
 check(lquick.open, "Quick opens with only 8 KB available (fallback stack)")
 key_queue = { KEY.TRASH }; run_tasks(3)
 tasks = {}; sleeping = {}
-dofile(root .. "/lfocus.lua")
+load_lumen()
 ticks(2)
 check(lfocus_menu.submenu["Status"].rinfo() == "running", "LUMEN Focus background starts with 8 KB")
 tasks = {}; sleeping = {}
 
 -- no memory at all: clear messages instead of silence
 mock_max_stack = 0x1000
-dofile(root .. "/lquick.lua")
+load_lumen()
 menu.visible = true; log = {}
 lquick_menu.select(); run_tasks(2)
 check(not lquick.open and log[#log] and log[#log]:match("not enough free memory"),
     "Quick explains when there is no memory to open")
-dofile(root .. "/lmenu.lua")
+load_lumen()
 log = {}
 lmenu_menu.submenu["Open LUMEN Menu"].select(); run_tasks(2)
 check(log[#log] and log[#log]:match("not enough free memory"), "LUMEN Menu explains when there is no memory")
 check(lmenu.starting == false, "a failed start never blocks the next try")
-dofile(root .. "/lfocus.lua")
+load_lumen()
 check(lfocus_menu.submenu["Status"].rinfo() == "not started (memory)", "Status says the background part couldn't start")
 log = {}
 lfocus_menu.submenu["Focus Chime"].value = "Soft"
