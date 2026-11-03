@@ -10,14 +10,14 @@ never modified. To go back to the stock camera, start it with a normal card.
 - **Based on:** Magic Lantern `ed3e7c0df` (`2025_release_01`), the build installed on the camera
 - **Design:** the LUMEN canvas, with all screens drawn at the native 720 × 480 resolution
 
-## Status: v0.2.1
+## Status: v0.2.2
 
 The full feature list, including the Canon settings for focus beeps and AF, is in **[FEATURES.md](FEATURES.md)**.
 
 | Area | State |
 |---|---|
 | Menu theme: near-black header and footer, gray selection, amber accent | ✅ |
-| LUMEN welcome / About screen | ✅ |
+| LUMEN boot / About screen: "Focus Frame" logo, by Dakshesh | ✅ new |
 | **Focus Chime**: pleasant tone when autofocus finishes in Live View | ✅ new |
 | **Auto AF**: refocus every 2, 5 or 10 s in Live View, off after 10 min | ✅ new |
 | **Presets**: Everyday, Portrait, Landscape, Cinema, Astro, Clean | ✅ new |
@@ -36,7 +36,7 @@ Every push is tested and built automatically by GitHub Actions:
 3. Check that the download is intact:
 
    ```bash
-   shasum -a 256 LUMEN-550D.109-0.2.1.zip
+   shasum -a 256 LUMEN-550D.109-0.2.2.zip
    ```
 
    Compare the result with the `.sha256` file. (It proves the file wasn't damaged in transit. It

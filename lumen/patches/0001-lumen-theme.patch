@@ -120,48 +120,102 @@ index a83f43e1..9d50ecfa 100755
      if (customize_mode) fgs = get_customize_color();
  
 diff --git a/src/menuhelp.c b/src/menuhelp.c
-index 425f1ae9..58f4cbe3 100644
+index 425f1ae9..d27caf83 100644
 --- a/src/menuhelp.c
 +++ b/src/menuhelp.c
-@@ -36,27 +36,32 @@ extern int menu_help_active;
+@@ -36,31 +36,79 @@ extern int menu_help_active;
  static int current_page = 1;
  static int help_pages = 100; // dummy value, will be updated on the fly
  
-+#define LUMEN_VERSION "0.2.1"
++#define LUMEN_VERSION "0.2.2"
++
++/* LUMEN boot logo "Focus Frame": the LUMEN wordmark inside amber
++ * autofocus brackets. Drawn only with solid fills and 1px lines,
++ * so it is pixel-exact on the 720x480 LCD. */
++
++/* a straight stroke `thick` pixels wide (offset horizontally) */
++static void lumen_stroke(int x1, int y1, int x2, int y2, int thick, int color)
++{
++    for (int d = -(thick / 2); d < thick - thick / 2; d++)
++    {
++        draw_line(x1 + d, y1, x2 + d, y2, color);
++    }
++}
++
++/* geometric wordmark, 288 x 56 px, 4 px strokes, top-left at (ox, oy) */
++static void lumen_wordmark(int ox, int oy, int color)
++{
++    /* L */
++    bmp_fill(color, ox -   2, oy -  2,  4, 60);
++    bmp_fill(color, ox -   2, oy + 54, 44,  4);
++    /* U */
++    bmp_fill(color, ox +  60, oy -  2,  4, 60);
++    bmp_fill(color, ox + 100, oy -  2,  4, 60);
++    bmp_fill(color, ox +  60, oy + 54, 44,  4);
++    /* M */
++    bmp_fill(color, ox + 122, oy -  2,  4, 60);
++    bmp_fill(color, ox + 162, oy -  2,  4, 60);
++    lumen_stroke(ox + 124, oy, ox + 144, oy + 32, 5, color);  /* diagonals 5 px: same visual weight as 4 px verticals */
++    lumen_stroke(ox + 144, oy + 32, ox + 164, oy, 5, color);
++    /* E */
++    bmp_fill(color, ox + 184, oy -  2,  4, 60);
++    bmp_fill(color, ox + 184, oy -  2, 44,  4);
++    bmp_fill(color, ox + 184, oy + 26, 38,  4);
++    bmp_fill(color, ox + 184, oy + 54, 44,  4);
++    /* N */
++    bmp_fill(color, ox + 246, oy -  2,  4, 60);
++    bmp_fill(color, ox + 286, oy -  2,  4, 60);
++    lumen_stroke(ox + 248, oy, ox + 288, oy + 56, 5, color);
++}
++
++/* four autofocus corner brackets around (175,109)-(546,260), 3 px strokes */
++static void lumen_focus_frame(int color)
++{
++    bmp_fill(color, 175, 109, 27,  3);  bmp_fill(color, 175, 109,  3, 25);  /* top left */
++    bmp_fill(color, 519, 109, 27,  3);  bmp_fill(color, 543, 109,  3, 25);  /* top right */
++    bmp_fill(color, 175, 257, 27,  3);  bmp_fill(color, 175, 235,  3, 25);  /* bottom left */
++    bmp_fill(color, 519, 257, 27,  3);  bmp_fill(color, 543, 235,  3, 25);  /* bottom right */
++    fill_circle(360, 110, 3, color);                                        /* focus point */
++}
 +
  void 
  draw_beta_warning()
  {
-+    /* LUMEN welcome screen (shown on first boot and on Help > About) */
++    /* LUMEN boot / About screen (shown on first boot and on Help > About) */
      bmp_fill(COLOR_BLACK, 0, 0, 720, 480);
  
 -    bmp_printf(FONT_CANON, 242, 53, "Magic Lantern");
-+    bmp_printf(FONT(FONT_LARGE, COLOR_WHITE, COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 90, "L U M E N");
++    lumen_focus_frame(COLOR_ORANGE);
++    lumen_wordmark(216, 156, COLOR_WHITE);
  
 -    bmp_printf(FONT_MED | FONT_ALIGN_CENTER, 360, 150, "This is a development snapshot for testing purposes.");
-+    bmp_fill(COLOR_ORANGE, 330, 150, 60, 3);
++    bmp_printf(FONT(FONT_MED, COLOR_GRAY(60), COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 278, "CUSTOM FIRMWARE  /  EOS 550D");
  
 -    bmp_printf(FONT_MED | FONT_ALIGN_CENTER, 360, 200, "Please report all bugs at www.magiclantern.fm.");
-+    bmp_printf(FONT(FONT_MED, COLOR_GRAY(70), COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 175, "Custom firmware for EOS 550D");
++    bmp_printf(FONT(FONT_MED, COLOR_GRAY(85), COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 308, "by Dakshesh");
  
 -    bmp_printf(FONT_MED | FONT_ALIGN_CENTER, 360, 250, "Be careful using it for production work.      ");
-+    bmp_printf(FONT(FONT_MED, COLOR_GRAY(70), COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 225, "Built on Magic Lantern. Development snapshot:");
++    bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 348, "Press any button to open LUMEN");
  
 -    bmp_printf(FONT_MED | FONT_ALIGN_CENTER, 360, 300, "Enjoy!");
 -    
 -    bmp_printf(FONT_MED | FONT_ALIGN_CENTER, 360, 350, "(Press any camera button to enter ML settings)");
-+    bmp_printf(FONT(FONT_MED, COLOR_GRAY(70), COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 255, "be careful using it for production work.");
-+
-+    bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 320, "Press any button to open LUMEN");
- 
+-
 -    big_bmp_printf(FONT_MED,  10,  410,
 -        "Magic Lantern version: %s\n"
-+    big_bmp_printf(FONT(FONT_MED, COLOR_GRAY(50), COLOR_BLACK),  10,  380,
-+        "LUMEN %s\n"
-+        "Magic Lantern %s\n"
-         "Git commit: %s\n"
-         "Built on %s by %s.",
-+        LUMEN_VERSION,
-         build_version,
-         build_id,
-         build_date,
+-        "Git commit: %s\n"
+-        "Built on %s by %s.",
+-        build_version,
+-        build_id,
+-        build_date,
+-        build_user);
++    bmp_printf(FONT(FONT_MED, COLOR_GRAY(50), COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 386, "Built on Magic Lantern. Development snapshot:");
++
++    bmp_printf(FONT(FONT_MED, COLOR_GRAY(50), COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 410, "be careful using it for production work.");
++
++    bmp_printf(FONT(FONT_SMALL, COLOR_GRAY(50), COLOR_BLACK), 20, 455, "LUMEN %s", LUMEN_VERSION);
++
++    bmp_printf(FONT(FONT_SMALL, COLOR_GRAY(50), COLOR_BLACK) | FONT_ALIGN_RIGHT, 700, 455, "Magic Lantern %s", build_version);
+ }
+ 
+ void 

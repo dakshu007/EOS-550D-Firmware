@@ -1,4 +1,4 @@
-# LUMEN features (v0.2.1)
+# LUMEN features (v0.2.2)
 
 Everything LUMEN can do on the EOS 550D, where to find it, and what the camera's hardware can't do.
 
