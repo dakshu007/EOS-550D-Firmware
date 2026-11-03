@@ -46,7 +46,9 @@ DEPENDS_ON = { AUTOFOCUS = 1, LIVEVIEW = 2, MOVIE_MODE = 4 }
 ICON_TYPE = { ACTION = 5 }
 KEY = { SET = 1, UP = 2, DOWN = 3, LEFT = 4, RIGHT = 5, Q = 6, MENU = 7, TRASH = 8,
         WHEEL_UP = 9, WHEEL_DOWN = 10, WHEEL_LEFT = 11, WHEEL_RIGHT = 12, INFO = 13 }
-FONT = { MED = { height = 23 }, LARGE = { height = 32 }, SMALL = { height = 12 } }
+-- fonts: like ML, each has a height and a width(text) method
+local function font(h, cw) return { height = h, width = function(self, t) return #tostring(t) * cw end } end
+FONT = { MED = font(23, 11), LARGE = font(32, 16), SMALL = font(12, 8) }
 event = {}
 MODE = { M = 3, MOVIE = 20, P = 0 }
 UNIT = { TIME = 1 }

@@ -31,7 +31,11 @@ local TILE_W = (720 - 2 * MARGIN - (COLS - 1) * GAP) // COLS   -- 152
 local TILE_H = 120
 local GRID_Y = 120
 
-lquick = { sel = 1, open = false }
+lquick = { sel = 1, open = false, states = {}, values = {} }
+
+-- responsiveness: keys every 20 ms, all queued keys handled before one
+-- redraw, tile states cached (only the toggled tile is re-read)
+local KEY_POLL_MS = 20
 
 local function tile_state(t)
     local ok, v = pcall(menu.get, t[2], t[3], 0)
@@ -39,10 +43,12 @@ local function tile_state(t)
     return v ~= 0
 end
 
+-- main part of the value only ("Percent, AFbox" -> "Percent"), so it fits a tile
 local function tile_value(t)
     local ok, v = pcall(menu.get, t[2], t[3])
     if not ok or v == nil then return "n/a" end
-    return tostring(v)
+    v = tostring(v)
+    return v:match("^([^,]+)") or v
 end
 
 local function toggle(t)
@@ -50,6 +56,14 @@ local function toggle(t)
     if on == nil then return false end
     local ok, result = pcall(menu.set, t[2], t[3], on and 0 or 1)
     return ok and result ~= nil
+end
+
+function lquick:refresh(i)
+    local from, to = i or 1, i or #TILES
+    for k = from, to do
+        self.states[k] = tile_state(TILES[k])
+        self.values[k] = self.states[k] and tile_value(TILES[k]) or nil
+    end
 end
 
 function lquick:draw()
@@ -63,7 +77,7 @@ function lquick:draw()
             local row = (i - 1) // COLS
             local x = MARGIN + col * (TILE_W + GAP)
             local y = GRID_Y + row * (TILE_H + GAP)
-            local on = tile_state(t)
+            local on = self.states[i]
             local bg = on and COLOR.gray(20) or COLOR.gray(8)
             local border = COLOR.gray(25)
             if i == self.sel then border = COLOR.ORANGE end
@@ -74,7 +88,7 @@ function lquick:draw()
             end
             display.print(t[1], x + 14, y + 16, FONT.MED, COLOR.WHITE, bg, TILE_W - 28)
             local fg = on and COLOR.ORANGE or COLOR.gray(55)
-            local text = (on == nil) and "n/a" or (on and tile_value(t) or "OFF")
+            local text = (on == nil) and "n/a" or (on and (self.values[i] or "ON") or "OFF")
             display.print(text, x + 14, y + TILE_H - 44, FONT.MED, fg, bg, TILE_W - 28)
         end
 
@@ -96,6 +110,7 @@ function lquick:handle_key(key)
         if toggle(TILES[self.sel]) then
             beep(1, 60, 1568)
         end
+        self:refresh(self.sel)
     end
     return true
 end
@@ -104,16 +119,22 @@ function lquick:run()
     if self.open then return end
     self.open = true
     local ok, err = pcall(function()
+        self:refresh()
         menu.block(true)
         keys:start()
         self:draw()
-        while menu.visible do
+        local running = true
+        while running and menu.visible do
+            -- handle every key that arrived, then draw once
+            local changed = false
             local key = keys:getkey()
-            if key ~= nil then
-                if self:handle_key(key) == false then break end
-                self:draw()
+            while key ~= nil do
+                if self:handle_key(key) == false then running = false; break end
+                changed = true
+                key = keys:getkey()
             end
-            task.yield(80)
+            if running and changed then self:draw() end
+            task.yield(KEY_POLL_MS)
         end
     end)
     keys:stop()

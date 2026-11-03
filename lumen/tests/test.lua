@@ -239,7 +239,7 @@ lquick_menu.select()
 for _ = 1, 20 do run_tasks(1) end
 check(menu_values["Overlay/Zebras"] == 1, "SET turns the selected overlay on (Zebras)")
 check(menu_set_calls[1] == "Overlay/Zebras=1", "only the selected overlay is changed")
-check(draw_calls >= 3, "the screen is redrawn after each key (" .. draw_calls .. " draws)")
+check(draw_calls == 1, "keys that arrive together are handled in one pass, no wasted redraws (" .. draw_calls .. ")")
 check(menu_blocked == false and keys.running == false, "closing gives the menu and keys back")
 check(lquick.open == false and #tasks == 0, "the Quick screen task ends after closing")
 
@@ -310,4 +310,127 @@ check(interval.stopped == 1, "Stop now does nothing when already stopped")
 tl_info.update(tl_info)
 check(tl_info.value == "", "info hidden again after stopping")
 
-print("\nall LUMEN script tests passed (including Quick and Timelapse)")
+-- keys arriving one at a time each redraw once
+menu.visible = true; lquick.sel = 1; draw_calls = 0
+key_queue = {}
+lquick_menu.select()
+run_tasks(2)
+local d0 = draw_calls
+key_queue = { KEY.RIGHT }; run_tasks(2)
+key_queue = { KEY.RIGHT }; run_tasks(2)
+check(draw_calls == d0 + 2 and lquick.sel == 3, "each separate key press redraws once")
+key_queue = { KEY.RIGHT, KEY.RIGHT, KEY.RIGHT, KEY.RIGHT }; run_tasks(2)
+check(draw_calls == d0 + 3 and lquick.sel == 7, "a burst of 4 presses is drawn once (no lag build-up)")
+key_queue = { KEY.Q }; run_tasks(3)
+check(lquick.open == false, "Q closes")
+menu.visible = false
+tasks = {}; sleeping = {}
+
+----------------------------------------------------------------- lmenu
+menu_values = { ["Overlay/Zebras"] = 0, ["Overlay/Global Draw"] = 1 }
+local real_get = menu.get
+local get_calls = 0
+-- simulate a camera where a few settings don't exist
+local missing = { ["Vectorscope"] = true, ["Level Indicator"] = true, ["Headphone Mon."] = true }
+menu.get = function(m, e, as_int)
+    get_calls = get_calls + 1
+    if missing[e] then return nil end
+    return real_get(m, e, as_int)
+end
+menu_select_calls = {}
+menu.select = function(m, e) table.insert(menu_select_calls, m .. "/" .. tostring(e)); return true end
+local closed = 0
+menu.close = function() closed = closed + 1; menu.visible = false end
+
+dofile(root .. "/lmenu.lua")
+check(lmenu_menu.parent == "Prefs", "LUMEN Menu settings live in Prefs")
+check(lmenu_menu.submenu["Trash button opens"].value == "Magic Lantern menu", "Trash keeps opening the normal ML menu by default")
+
+-- open from the menu item
+menu.visible = true; draw_calls = 0; key_queue = {}
+lmenu_menu.submenu["Open LUMEN Menu"].select()
+run_tasks(3)
+check(lmenu.open and menu_blocked and keys.running, "Open LUMEN Menu shows the screen")
+check(lmenu.tabs[1].name == "Shoot", "first tab is Shoot")
+local has_vs = false
+for _, t in ipairs(lmenu.tabs) do
+    for _, it in ipairs(t.items) do if it[1] == "Vectorscope" then has_vs = true end end
+end
+check(not has_vs, "settings this camera doesn't have are hidden")
+
+-- navigation: RIGHT x2 = Overlay tab, DOWN = Global Draw, SET toggles it off
+key_queue = { KEY.RIGHT, KEY.RIGHT, KEY.DOWN }
+run_tasks(2)
+check(lmenu.tabs[lmenu.tab].name == "Overlay" and lmenu.tabs[lmenu.tab].items[lmenu.row][1] == "Global Draw",
+    "Left/Right change tab, Up/Down move (now Overlay / Global Draw)")
+menu_set_calls = {}
+key_queue = { KEY.SET }; run_tasks(2)
+check(menu_set_calls[1] == "Overlay/Global Draw=0", "SET switches an ON/OFF item (Global Draw off)")
+check(lmenu.tabs[lmenu.tab].values[lmenu.row] == "OFF", "the changed value is shown right away")
+
+-- cached values: moving around does not re-read every setting
+get_calls = 0
+key_queue = { KEY.DOWN, KEY.DOWN, KEY.UP, KEY.DOWN }; run_tasks(2)
+check(get_calls == 0, "moving between rows reads no settings (values cached)")
+
+-- SET on a non-toggle item opens it in Magic Lantern and leaves the LUMEN screen
+key_queue = { KEY.UP, KEY.UP, KEY.UP }; run_tasks(2)     -- back to "LUMEN Quick"
+menu_set_calls = {}; menu_select_calls = {}
+key_queue = { KEY.SET }; run_tasks(3)
+check(#menu_set_calls == 0 and menu_select_calls[1] == "Overlay/LUMEN Quick",
+    "SET on a non-switch item opens it in the ML menu instead of changing it")
+check(lmenu.open == false and menu_blocked == false and keys.running == false,
+    "leaving gives the menu and buttons back")
+
+-- every toggle-marked item is a plain ON/OFF overlay/focus/audio/prefs item
+for _, t in ipairs(lmenu.tabs) do
+    for _, it in ipairs(t.items) do
+        if it.toggle then
+            check(t.name ~= "Shoot" and t.name ~= "Expo" and t.name ~= "Debug" and t.name ~= "Movie",
+                "no Shoot/Expo/Movie/Debug item can be switched from LUMEN Menu (" .. it[1] .. ")")
+        end
+    end
+end
+
+-- MENU closes the LUMEN screen and the ML menu
+menu.visible = true
+lmenu_menu.submenu["Open LUMEN Menu"].select(); run_tasks(3)
+key_queue = { KEY.MENU }; run_tasks(3)
+check(lmenu.open == false and closed == 1, "MENU closes LUMEN Menu and the ML menu")
+
+-- INFO goes to the classic ML menu (stays open)
+menu.visible = true; closed = 0
+lmenu_menu.submenu["Open LUMEN Menu"].select(); run_tasks(3)
+key_queue = { KEY.INFO }; run_tasks(3)
+check(lmenu.open == false and closed == 0 and menu.visible, "INFO switches to the classic ML menu")
+
+-- Trash shortcut: off by default, then on
+menu.visible = false
+event.keypress(KEY.TRASH); run_tasks(2)
+check(lmenu.pending == false and lmenu.open == false, "Trash does nothing extra while set to the ML menu")
+lmenu_menu.submenu["Trash button opens"].value = "LUMEN Menu"
+check(event.keypress(KEY.TRASH) == nil, "the Trash key is never blocked")
+run_tasks(2)
+check(lmenu.open == false, "waits for the ML menu to appear first")
+menu.visible = true; run_tasks(3)
+check(lmenu.open == true, "Trash opens LUMEN Menu once the ML menu is on screen")
+key_queue = { KEY.TRASH }; run_tasks(3)
+check(lmenu.open == false and menu.visible == false, "Trash closes it again")
+
+-- Trash pressed but the menu never appears: gives up quietly after 2 s
+lmenu.pending = false; menu.visible = false
+event.keypress(KEY.TRASH)
+for _ = 1, 60 do run_tasks(1) end
+check(lmenu.pending == false and lmenu.open == false, "gives up if the ML menu never opens")
+
+-- settings
+lmenu_cfg:saving()
+check(lmenu_cfg.data.trash == "LUMEN Menu", "Trash setting is saved")
+tasks = {}; sleeping = {}
+mock_saved_cfg = { trash = "Banana" }
+dofile(root .. "/lmenu.lua")
+check(lmenu_menu.submenu["Trash button opens"].value == "Magic Lantern menu", "bad saved value falls back to the ML menu")
+tasks = {}; sleeping = {}
+menu.get = real_get
+
+print("\nall LUMEN script tests passed (including Quick, Timelapse and LUMEN Menu)")

@@ -25,11 +25,12 @@ The full feature list, including the Canon settings for focus beeps and AF, is i
 | Lua module and LUMEN scripts start automatically | ✅ new |
 | All Magic Lantern 550D features | ✅ unchanged |
 | **Boot logo at every power-on** (Prefs → LUMEN Boot Logo) | ✅ new |
+| **LUMEN Menu**: the design's menu layout (Prefs → LUMEN Menu) | ✅ new |
 | **Quick toggles** screen (Overlay → LUMEN Quick) | ✅ new |
 | **Timelapse status** (Shoot → LUMEN Timelapse) | ✅ new |
 | Live View info bars in LUMEN colors | ✅ new |
 | Darker selection bar, longer chime notes | ✅ new |
-| Menu layout like the design (tab rail, rows), playback panel, LUMEN fonts | not yet |
+| Playback panel (needs photo data scripts can't read), LUMEN fonts | not possible / not yet |
 
 ## Get a build
 
@@ -79,7 +80,7 @@ and `ML/LOGS`.
 
 4. Eject the card, put it in the camera and turn it on. Press **Trash** to open LUMEN.
    The Lua module and the LUMEN scripts load automatically at startup (a few seconds).
-   You'll find them under **Focus → LUMEN Focus**, **Overlay → LUMEN Quick**, **Shoot → LUMEN Presets**,
+   You'll find them under **Prefs → LUMEN Menu**, **Focus → LUMEN Focus**, **Overlay → LUMEN Quick**, **Shoot → LUMEN Presets**,
    **Shoot → LUMEN Astro** and **Shoot → LUMEN Timelapse**.
 
 ### If something goes wrong
@@ -95,7 +96,7 @@ and `ML/LOGS`.
 - **After a crash,** Magic Lantern skips loading modules on the next start, as a safety measure.
   Restart once more to load them again.
 - **To turn off the LUMEN scripts only:** delete `ML/SETTINGS/LFOCUS.LEN`, `LPRESET.LEN`,
-  `LASTRO.LEN`, `LQUICK.LEN` and `LTLAPSE.LEN` on the card. Delete `ML/SETTINGS/LUA.EN` too to stop loading Lua.
+  `LASTRO.LEN`, `LQUICK.LEN`, `LTLAPSE.LEN` and `LMENU.LEN` on the card. Delete `ML/SETTINGS/LUA.EN` too to stop loading Lua.
 - **A Canon setting looks changed** (for example the AF button custom function after a battery
   pull during autofocus): fix it in the Canon menu, or use Canon's *Clear all camera settings*.
 - **To boot stock firmware once:** hold **SET** while turning the camera on.
@@ -127,7 +128,7 @@ build.sh                    fetch Magic Lantern, apply patches, add scripts, bui
 FEATURES.md                 everything LUMEN can (and can't) do
 lumen/VERSION               LUMEN version
 lumen/patches/              LUMEN changes to Magic Lantern's C code
-lumen/scripts/              LUMEN features in Lua (Focus, Presets, Astro, Quick, Timelapse)
+lumen/scripts/              LUMEN features in Lua (Menu, Focus, Presets, Astro, Quick, Timelapse)
 lumen/card/                 extra card files: autorun flags in ML/SETTINGS
 lumen/tests/                tests for the Lua scripts, run against a mock camera API
 .github/workflows/build.yml tests and builds on every push
