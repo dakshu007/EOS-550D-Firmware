@@ -224,4 +224,90 @@ dofile(root .. "/lastro.lua")
 check(lastro_menu.submenu["Star Limit"].value == "OFF" and lastro_menu.submenu["Rule"].value == "500 rule",
     "bad saved astro values fall back to defaults")
 
-print("\nall LUMEN script tests passed")
+
+
+----------------------------------------------------------------- lquick
+tasks = {}; sleeping = {}
+dofile(root .. "/lquick.lua")
+check(lquick_menu.parent == "Overlay" and lquick_menu.name == "LUMEN Quick", "LUMEN Quick is in the Overlay menu")
+
+menu_values = {}
+menu.visible = true
+key_queue = { KEY.RIGHT, KEY.SET, KEY.Q }      -- move to Zebras, toggle it, close
+draw_calls = 0; menu_set_calls = {}
+lquick_menu.select()
+for _ = 1, 20 do run_tasks(1) end
+check(menu_values["Overlay/Zebras"] == 1, "SET turns the selected overlay on (Zebras)")
+check(menu_set_calls[1] == "Overlay/Zebras=1", "only the selected overlay is changed")
+check(draw_calls >= 3, "the screen is redrawn after each key (" .. draw_calls .. " draws)")
+check(menu_blocked == false and keys.running == false, "closing gives the menu and keys back")
+check(lquick.open == false and #tasks == 0, "the Quick screen task ends after closing")
+
+lquick.sel = 1
+key_queue = { KEY.RIGHT, KEY.SET, KEY.SET, KEY.MENU }  -- Zebras off again, then on
+menu_set_calls = {}
+lquick_menu.select()
+for _ = 1, 20 do run_tasks(1) end
+check(menu_set_calls[1] == "Overlay/Zebras=0" and menu_set_calls[2] == "Overlay/Zebras=1"
+    and menu_values["Overlay/Zebras"] == 1, "SET twice toggles Zebras off and on again")
+
+key_queue = { KEY.LEFT }                      -- wrap from tile 2 to tile 1, then close via menu closing
+lquick.sel = 2
+lquick_menu.select()
+run_tasks(3)
+menu.visible = false                          -- user leaves the ML menu
+run_tasks(3)
+check(lquick.sel == 1 and lquick.open == false, "LEFT wraps; screen closes when the ML menu closes")
+check(menu_blocked == false, "menu unblocked after the ML menu closes")
+
+lquick.sel = 1
+for _, k in ipairs({ KEY.DOWN, KEY.DOWN, KEY.LEFT, KEY.RIGHT, KEY.RIGHT }) do lquick:handle_key(k) end
+check(lquick.sel == 2, "arrow navigation stays inside the 4x2 grid (sel=" .. lquick.sel .. ")")
+for i = 1, 20 do lquick:handle_key(KEY.RIGHT) end
+check(lquick.sel >= 1 and lquick.sel <= 8, "selection never leaves the grid")
+
+menu.visible = true
+key_queue = { KEY.SET, KEY.SET, KEY.Q }
+lquick_menu.select(); lquick_menu.select()   -- double open must not start two screens
+for _ = 1, 20 do run_tasks(1) end
+check(lquick.open == false, "opening twice does not start two Quick screens")
+menu.visible = false
+tasks = {}; sleeping = {}
+
+----------------------------------------------------------------- ltlapse
+lv.infos = {}
+dofile(root .. "/ltlapse.lua")
+local tl_info = lv.infos[1]
+interval.running = false
+tl_info.update(tl_info)
+check(tl_info.value == "", "timelapse info hidden when the intervalometer is off")
+check(ltlapse_menu.update(ltlapse_menu) == "OFF", "Shoot menu shows OFF when not running")
+
+interval.running = true; interval.time = 10; interval.count = 0
+clock = 1000000
+tl_info.update(tl_info)
+check(tl_info.value == "TL 0  0:00", "running before the first frame: frames and elapsed")
+interval.count = 1; event.intervalometer(1)
+clock = clock + 3000
+tl_info.update(tl_info)
+check(tl_info.value == "TL 1  next 7s  0:03", "countdown after a frame, got " .. tl_info.value)
+clock = clock + 65000
+tl_info.update(tl_info)
+check(tl_info.value:match("next 0s") and tl_info.value:match("1:08"), "countdown stops at 0; elapsed 1:08")
+
+log = {}
+ltlapse_menu.submenu["Frame Tick"].value = "ON"
+check(event.intervalometer(2) == nil, "never asks the intervalometer to stop")
+check(count_beeps() == 1, "Frame Tick beeps once per frame")
+ltlapse_menu.submenu["Frame Tick"].value = "OFF"; log = {}
+event.intervalometer(3)
+check(count_beeps() == 0, "Frame Tick OFF is silent")
+
+ltlapse_menu.submenu["Stop now"].select()
+check(interval.running == false and interval.stopped == 1, "Stop now stops the intervalometer")
+ltlapse_menu.submenu["Stop now"].select()
+check(interval.stopped == 1, "Stop now does nothing when already stopped")
+tl_info.update(tl_info)
+check(tl_info.value == "", "info hidden again after stopping")
+
+print("\nall LUMEN script tests passed (including Quick and Timelapse)")

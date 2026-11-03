@@ -1,4 +1,4 @@
-# LUMEN features (v0.2.2)
+# LUMEN features (v0.3.0)
 
 Everything LUMEN can do on the EOS 550D, where to find it, and what the camera's hardware can't do.
 
@@ -14,6 +14,10 @@ setting and **Q** opens a submenu.
 | **Presets** | Shoot → LUMEN Presets | One-tap setups: **Everyday, Portrait, Landscape, Cinema, Astro, Clean**. Pick one, then **Apply**. |
 | **Star Limit** | Shoot → LUMEN Astro | Shows the longest exposure before stars trail at your focal length (500, 400 or 300 rule, 1.6× crop) in the Live View info bar. |
 | **Star Focus** | Shoot → LUMEN Astro | Jumps Live View to 10× zoom for focusing on a star, and tells you if Canon refuses the zoom (then press the zoom button). |
+| **Boot logo** | at power-on | The Focus Frame logo with "by Dakshesh", shown for 2 s each time the camera starts (normal screen, not in Live View). Turn it off in **Prefs → LUMEN Boot Logo**. |
+| **Quick toggles** | Overlay → LUMEN Quick | One screen with 8 tiles: Overlays, Zebras, Focus Peak, Magic Zoom, Cropmarks, Spotmeter, False Color, Histogram. Arrows move, **SET** toggles, **Q** closes. Star it to put it in **★ My Menu**. |
+| **Timelapse status** | Shoot → LUMEN Timelapse | While the intervalometer runs: frames taken, countdown to the next frame and elapsed time, in the menu and the Live View info bar. Optional **Frame Tick** sound, and **Stop now**. |
+| **Live View colors** | Live View info bars | The ISO value you're changing shows as an amber label, exposure override and RAW in amber. Overheat warnings stay red and orange. |
 | **LUMEN theme** | everywhere | Dark menus, gray selection bar with an amber marker, amber accents and the LUMEN About screen. |
 
 Notes:
@@ -34,6 +38,17 @@ Notes:
     function during each autofocus and restores it afterwards. If the battery is pulled mid-focus,
     check it in the Canon menu.
 - The chime is silent while you record video with sound, so it never ends up in your audio.
+
+## Not changed by LUMEN
+
+- **Canon's own screens** (the MENU button screens, the Q screen, Canon's Live View icons) are part
+  of Canon's firmware inside the camera. Changing them would mean rewriting the camera's internal
+  memory, which is what can brick a camera, so LUMEN leaves them alone. In Live View, press
+  **DISP** to switch to the Magic Lantern / LUMEN overlays.
+- **The menu layout** (tabs, rows) is still Magic Lantern's. LUMEN changes its colors, not its
+  structure.
+- **The Magic Lantern welcome screen** still appears once a day the first time you open the menu.
+  It now shows the LUMEN logo.
 
 ## Focus beep and autofocus: Canon settings that help
 

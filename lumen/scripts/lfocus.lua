@@ -18,13 +18,16 @@
 require("config")
 
 -- tone sequences: { frequency (Hz), duration (ms) }
+-- long enough to be clearly audible on the 550D's small speaker
+-- (louder: Audio > Speaker Volume)
 local CHIMES =
 {
-    ["Soft"]    = { {1047, 45} },                         -- C6, short and quiet
-    ["Bright"]  = { {1568, 35}, {2093, 70} },             -- G6 -> C7, rising
-    ["Crystal"] = { {2093, 30}, {2637, 30}, {3136, 60} }, -- C7 -> E7 -> G7
-    ["Classic"] = { {2700, 50}, {2700, 50} },             -- double beep
+    ["Soft"]    = { {1047, 120} },                           -- C6, one gentle note
+    ["Bright"]  = { {1568, 90}, {2093, 160} },               -- G6 -> C7, rising
+    ["Crystal"] = { {2093, 80}, {2637, 80}, {3136, 160} },   -- C7 -> E7 -> G7
+    ["Classic"] = { {2700, 100}, {2700, 100} },              -- double beep
 }
+local NOTE_GAP_MS = 60   -- pause between notes, so the beep task never drops one
 local CHIME_CHOICES = { "OFF", "Soft", "Bright", "Crystal", "Classic" }
 
 local AUTO_AF_MS =
@@ -46,7 +49,7 @@ local function play_chime(name)
     if seq == nil then return end
     for i, tone in ipairs(seq) do
         beep(1, tone[2], tone[1])
-        if i < #seq then task.yield(tone[2] + 20) end
+        if i < #seq then task.yield(tone[2] + NOTE_GAP_MS) end
     end
 end
 
@@ -65,7 +68,7 @@ lfocus_menu = menu.new
             name    = "Focus Chime",
             choices = CHIME_CHOICES,
             help    = "Tone played when autofocus finishes in Live View.",
-            help2   = "Viewfinder: enable Canon menu > Beep instead.",
+            help2   = "Louder: Audio > Speaker Volume. Viewfinder: Canon Beep.",
         },
         {
             name    = "Test Chime",

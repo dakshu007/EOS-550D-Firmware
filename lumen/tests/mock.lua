@@ -43,21 +43,38 @@ function run_tasks(steps)
 end
 
 DEPENDS_ON = { AUTOFOCUS = 1, LIVEVIEW = 2, MOVIE_MODE = 4 }
+ICON_TYPE = { ACTION = 5 }
+KEY = { SET = 1, UP = 2, DOWN = 3, LEFT = 4, RIGHT = 5, Q = 6, MENU = 7, TRASH = 8,
+        WHEEL_UP = 9, WHEEL_DOWN = 10, WHEEL_LEFT = 11, WHEEL_RIGHT = 12, INFO = 13 }
+FONT = { MED = { height = 23 }, LARGE = { height = 32 }, SMALL = { height = 12 } }
+event = {}
 MODE = { M = 3, MOVIE = 20, P = 0 }
 UNIT = { TIME = 1 }
-COLOR = {}
+COLOR = { BLACK = 2, WHITE = 1, ORANGE = 19, gray = function(p) return 38 + p * 41 // 100 end }
 
+menus_created = {}
 menu_set_calls = {}
+menu_values = {}          -- "Menu/Entry" -> int value (missing = 0)
+menu_blocked = false
 menu = {
     visible = false,
     close = function() end,
+    block = function(b) menu_blocked = b end,
     set = function(m, e, v)
         table.insert(menu_set_calls, m .. "/" .. e .. "=" .. tostring(v))
         if e == "Vectorscope" then return nil end -- pretend one entry is missing
+        menu_values[m .. "/" .. e] = v
         return true
     end,
+    get = function(m, e, as_int)
+        local v = menu_values[m .. "/" .. e] or 0
+        if as_int ~= nil then return v end
+        return v == 0 and "OFF" or "ON"
+    end,
     new = function(def)
-        local entry = { name = def.name, value = def.value, update = def.update, submenu = {} }
+        local entry = { name = def.name, value = def.value, update = def.update, select = def.select,
+                        parent = def.parent, submenu = {} }
+        table.insert(menus_created, entry)
         for _, s in ipairs(def.submenu or {}) do
             local se = { name = s.name, select = s.select, info = s.info, rinfo = s.rinfo, choices = s.choices }
             se.value = s.value or (s.choices and s.choices[1]) or 0
@@ -112,4 +129,28 @@ camera = {
     aperture = { value = 5.6, min = { value = 3.5 } },
 }
 
-display = { notify_box = function(msg) L("notify: %s", msg) end }
+draw_calls = 0
+display = {
+    notify_box = function(msg) L("notify: %s", msg) end,
+    draw = function(fn) draw_calls = draw_calls + 1; fn() end,
+    rect = function(x, y, w, h, stroke, fill)
+        if x < 0 or y < 0 or x + w > 720 or y + h > 480 then error("rect out of screen") end
+    end,
+    print = function(text, x, y, font, fg, bg, max_w)
+        if x < 0 or y < 0 or x > 720 or y > 480 then error("print out of screen") end
+    end,
+}
+
+-- intervalometer
+interval = { time = 10, count = 0, running = false, stopped = 0 }
+interval.stop = function() interval.running = false; interval.stopped = interval.stopped + 1 end
+
+-- keys library (scripts/lib/keys.lua): tests push keys into key_queue
+key_queue = {}
+keys = {
+    running = false,
+    start = function(self) self.running = true end,
+    stop = function(self) self.running = false end,
+    getkey = function(self) return table.remove(key_queue, 1) end,
+}
+package.loaded["keys"] = keys

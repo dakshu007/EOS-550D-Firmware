@@ -1,5 +1,60 @@
+diff --git a/src/lens.c b/src/lens.c
+index 60599ef6..c74d750c 100644
+--- a/src/lens.c
++++ b/src/lens.c
+@@ -2968,7 +2968,7 @@ static LVINFO_UPDATE_FUNC(picq_update)
+             /* todo: icon? */
+             snprintf(buffer, sizeof(buffer), "RAW");
+         }
+-        item->color_fg = raw_lv == 1 ? COLOR_GREEN1 : COLOR_GRAY(20);
++        item->color_fg = raw_lv == 1 ? COLOR_ORANGE : COLOR_GRAY(20);   /* LUMEN accent */
+     }
+ }
+ 
+@@ -3124,8 +3124,8 @@ static LVINFO_UPDATE_FUNC(av_update)
+     
+     if (CONTROL_BV)
+     {
+-        /* mark the "exposure override" mode */
+-        item->color_bg = 18;
++        /* mark the "exposure override" mode (LUMEN: amber text) */
++        item->color_fg = COLOR_ORANGE;
+     }
+ }
+ 
+@@ -3148,8 +3148,8 @@ static LVINFO_UPDATE_FUNC(tv_update)
+ 
+     if (CONTROL_BV)
+     {
+-        /* mark the "exposure override" mode */
+-        item->color_bg = 18;
++        /* mark the "exposure override" mode (LUMEN: amber text) */
++        item->color_fg = COLOR_ORANGE;
+     }
+ }
+ 
+@@ -3250,14 +3250,16 @@ static LVINFO_UPDATE_FUNC(iso_update)
+     #ifdef ISO_ADJUSTMENT_ACTIVE
+     if (ISO_ADJUSTMENT_ACTIVE)
+     {
+-        item->color_bg = COLOR_LIGHT_BLUE;
++        /* LUMEN: value being adjusted = amber label, black text */
++        item->color_bg = COLOR_ORANGE;
++        item->color_fg = COLOR_BLACK;
+     }
+     else
+     #endif
+     if (CONTROL_BV)
+     {
+-        /* mark the "exposure override" mode */
+-        item->color_bg = 18;
++        /* mark the "exposure override" mode (LUMEN: amber text) */
++        item->color_fg = COLOR_ORANGE;
+     }
+ }
+ 
 diff --git a/src/menu.c b/src/menu.c
-index a83f43e1..9d50ecfa 100755
+index a83f43e1..ee7ffd41 100755
 --- a/src/menu.c
 +++ b/src/menu.c
 @@ -56,10 +56,18 @@
@@ -10,7 +65,7 @@ index a83f43e1..9d50ecfa 100755
 +/* LUMEN theme: near-black chrome, quiet gray selection, one amber accent */
 +#define LUMEN_ACCENT        COLOR_ORANGE            /* the single accent color */
 +#define LUMEN_ACCENT_DIM    COLOR_DARK_ORANGE_MOD   /* accent for greyed-out items */
-+#define LUMEN_BAR           COLOR_GRAY(22)          /* selected row background */
++#define LUMEN_BAR           COLOR_GRAY(14)          /* selected row background (dark gray) */
 +#define LUMEN_BAR_EDIT      COLOR_GRAY(40)          /* value being edited / pickbox selection */
 +
 +#define MENU_BG_COLOR_HEADER_FOOTER COLOR_GRAY(5)
@@ -120,14 +175,14 @@ index a83f43e1..9d50ecfa 100755
      if (customize_mode) fgs = get_customize_color();
  
 diff --git a/src/menuhelp.c b/src/menuhelp.c
-index 425f1ae9..d27caf83 100644
+index 425f1ae9..2689dc57 100644
 --- a/src/menuhelp.c
 +++ b/src/menuhelp.c
-@@ -36,31 +36,79 @@ extern int menu_help_active;
+@@ -36,33 +36,144 @@ extern int menu_help_active;
  static int current_page = 1;
  static int help_pages = 100; // dummy value, will be updated on the fly
  
-+#define LUMEN_VERSION "0.2.2"
++#define LUMEN_VERSION "0.3.0"
 +
 +/* LUMEN boot logo "Focus Frame": the LUMEN wordmark inside amber
 + * autofocus brackets. Drawn only with solid fills and 1px lines,
@@ -178,29 +233,41 @@ index 425f1ae9..d27caf83 100644
 +    fill_circle(360, 110, 3, color);                                        /* focus point */
 +}
 +
++/* LUMEN brand block: focus frame, wordmark, tagline and credit */
++static void lumen_draw_brand()
++{
++    lumen_focus_frame(COLOR_ORANGE);
++    lumen_wordmark(216, 156, COLOR_WHITE);
++
++    bmp_printf(FONT(FONT_MED, COLOR_GRAY(60), COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 278, "CUSTOM FIRMWARE  /  EOS 550D");
++
++    bmp_printf(FONT(FONT_MED, COLOR_GRAY(85), COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 308, "by Dakshesh");
++}
++
  void 
  draw_beta_warning()
  {
-+    /* LUMEN boot / About screen (shown on first boot and on Help > About) */
++    /* LUMEN About screen (Magic Lantern shows it once a day when the menu
++     * is first opened, and on Help > About) */
      bmp_fill(COLOR_BLACK, 0, 0, 720, 480);
  
 -    bmp_printf(FONT_CANON, 242, 53, "Magic Lantern");
-+    lumen_focus_frame(COLOR_ORANGE);
-+    lumen_wordmark(216, 156, COLOR_WHITE);
++    lumen_draw_brand();
  
 -    bmp_printf(FONT_MED | FONT_ALIGN_CENTER, 360, 150, "This is a development snapshot for testing purposes.");
-+    bmp_printf(FONT(FONT_MED, COLOR_GRAY(60), COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 278, "CUSTOM FIRMWARE  /  EOS 550D");
++    bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 348, "Press any button to open LUMEN");
  
 -    bmp_printf(FONT_MED | FONT_ALIGN_CENTER, 360, 200, "Please report all bugs at www.magiclantern.fm.");
-+    bmp_printf(FONT(FONT_MED, COLOR_GRAY(85), COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 308, "by Dakshesh");
++    bmp_printf(FONT(FONT_MED, COLOR_GRAY(50), COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 386, "Built on Magic Lantern. Development snapshot:");
  
 -    bmp_printf(FONT_MED | FONT_ALIGN_CENTER, 360, 250, "Be careful using it for production work.      ");
-+    bmp_printf(FONT(FONT_MED, COLOR_ORANGE, COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 348, "Press any button to open LUMEN");
++    bmp_printf(FONT(FONT_MED, COLOR_GRAY(50), COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 410, "be careful using it for production work.");
  
 -    bmp_printf(FONT_MED | FONT_ALIGN_CENTER, 360, 300, "Enjoy!");
 -    
 -    bmp_printf(FONT_MED | FONT_ALIGN_CENTER, 360, 350, "(Press any camera button to enter ML settings)");
--
++    bmp_printf(FONT(FONT_SMALL, COLOR_GRAY(50), COLOR_BLACK), 20, 455, "LUMEN %s", LUMEN_VERSION);
+ 
 -    big_bmp_printf(FONT_MED,  10,  410,
 -        "Magic Lantern version: %s\n"
 -        "Git commit: %s\n"
@@ -209,13 +276,65 @@ index 425f1ae9..d27caf83 100644
 -        build_id,
 -        build_date,
 -        build_user);
-+    bmp_printf(FONT(FONT_MED, COLOR_GRAY(50), COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 386, "Built on Magic Lantern. Development snapshot:");
-+
-+    bmp_printf(FONT(FONT_MED, COLOR_GRAY(50), COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 410, "be careful using it for production work.");
-+
-+    bmp_printf(FONT(FONT_SMALL, COLOR_GRAY(50), COLOR_BLACK), 20, 455, "LUMEN %s", LUMEN_VERSION);
-+
 +    bmp_printf(FONT(FONT_SMALL, COLOR_GRAY(50), COLOR_BLACK) | FONT_ALIGN_RIGHT, 700, 455, "Magic Lantern %s", build_version);
  }
  
++/* LUMEN boot logo: shown for 2 seconds every time the camera starts,
++ * on the normal (non-LiveView) screen. Prefs > LUMEN Boot Logo turns it off. */
++static CONFIG_INT("lumen.boot.logo", lumen_boot_logo, 1);
++
++static void lumen_draw_boot_logo()
++{
++    bmp_fill(COLOR_BLACK, 0, 0, 720, 480);
++    lumen_draw_brand();
++    bmp_printf(FONT(FONT_SMALL, COLOR_GRAY(50), COLOR_BLACK) | FONT_ALIGN_CENTER, 360, 455, "LUMEN %s", LUMEN_VERSION);
++}
++
++static int lumen_boot_logo_allowed()
++{
++    return lumen_boot_logo && DISPLAY_IS_ON && !lv && !RECORDING && !gui_menu_shown();
++}
++
++static void lumen_boot_logo_task()
++{
++    extern int ml_started;
++
++    /* wait until Magic Lantern has finished starting (settings are loaded by then) */
++    for (int i = 0; i < 150 && !ml_started; i++)
++    {
++        msleep(100);
++    }
++    if (!ml_started) return;
++
++    msleep(300);    /* let Canon finish drawing its first screen */
++    if (!lumen_boot_logo_allowed()) return;
++
++    BMP_LOCK( lumen_draw_boot_logo(); )
++    msleep(2000);
++
++    /* give the screen back to Canon */
++    if (!gui_menu_shown()) redraw();
++}
++
++TASK_CREATE("lumen_logo_task", lumen_boot_logo_task, 0, 0x1e, 0x1000);
++
++static struct menu_entry lumen_prefs_menu[] =
++{
++    {
++        .name   = "LUMEN Boot Logo",
++        .priv   = &lumen_boot_logo,
++        .max    = 1,
++        .help   = "Show the LUMEN logo for 2 seconds when the camera starts.",
++    },
++};
++
++static void lumen_menuhelp_init()
++{
++    menu_add("Prefs", lumen_prefs_menu, COUNT(lumen_prefs_menu));
++}
++
++INIT_FUNC("lumen_menuhelp", lumen_menuhelp_init);
++
  void 
+ draw_404_page()
+ {
