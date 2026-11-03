@@ -550,8 +550,10 @@ do
     local creates = 0
     for _ in src:gmatch("task%.create") do creates = creates + 1 end
     check(creates == 1, "the whole bundle starts exactly one task (" .. creates .. ")")
-    check(src:match("pcall%(task%.create, monitor, 0x1c, stack%)") ~= nil,
-        "that one task is started with an explicit small stack")
+    check(src:match("pcall%(task%.create, monitor, 0x1c, stack, false, monitor%)") ~= nil,
+        "that one task is started with a small stack AND the function as last argument (ML luaL_ref bug)")
+    check(src:match("task%.create, monitor, 0x1c, stack%)") == nil,
+        "the old call that crashed with ML ASSERT lua_task.c:80 is gone")
     check(src:match("{ 0x4000, 0x2000 }") ~= nil, "stack sizes are 16 KB then 8 KB")
 end
 

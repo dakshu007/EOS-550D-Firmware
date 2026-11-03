@@ -16,10 +16,20 @@ mock_max_stack = 0x4000      -- like the real camera: 32/64 KB task stacks fail
 task = {
     -- like the 550D: task stacks bigger than mock_max_stack can't be allocated
     -- (ML then raises "task not started")
-    create = function(fn, priority, stack)
-        stack = stack or 0x10000
+    -- Like ML (lua_task.c): the function that actually runs is whatever is on
+    -- TOP of the stack, i.e. the LAST argument (luaL_ref). If that isn't a
+    -- function, the real camera stops the task with "ML ASSERT lua_task.c:80".
+    create = function(...)
+        local n = select("#", ...)
+        local args = { ... }
+        local fn, stack = args[1], args[3] or 0x10000
+        if type(fn) ~= "function" then error("function expected") end
         if mock_max_stack and stack > mock_max_stack then error("task not started") end
-        table.insert(tasks, coroutine.create(fn))
+        local top = args[n]                       -- what luaL_ref actually stores
+        if type(top) ~= "function" then
+            error("ML ASSERT: lua_task.c:80 (lua_run_task): task's function is a " .. type(top))
+        end
+        table.insert(tasks, coroutine.create(top))
     end,
     -- like ML (lua_task.c): task.yield fails if another task of the same
     -- script is already sleeping inside task.yield

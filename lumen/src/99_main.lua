@@ -28,9 +28,15 @@ end
 
 -- The 550D can't spare 32-64 KB task stacks ("task not started"):
 -- use 16 KB, then 8 KB (ML's own C tasks use 4-8 KB).
+--
+-- IMPORTANT: ML's task.create (lua_task.c) stores whatever is on TOP of the
+-- Lua stack as the function to run (luaL_ref), i.e. the LAST argument. With
+-- task.create(fn, prio, stack) that is the stack size, and the task dies with
+-- "ML ASSERT ... lua_task.c:80". So the function is passed again as the last
+-- argument: task.create(fn, priority, stack, disable_powersave, fn).
 local started = false
 for _, stack in ipairs({ 0x4000, 0x2000 }) do
-    if pcall(task.create, monitor, 0x1c, stack) then
+    if pcall(task.create, monitor, 0x1c, stack, false, monitor) then
         started = true
         break
     end
