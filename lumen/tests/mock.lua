@@ -29,6 +29,21 @@ task = {
         sleeping[me] = nil
     end,
 }
+-- key_queue: test key presses, delivered through event.keypress like ML does.
+-- If Trash/MENU is not blocked while the ML menu is open, ML closes its menu.
+key_results = {}
+local function deliver_keys()
+    while #key_queue > 0 do
+        local k = table.remove(key_queue, 1)
+        local r = true
+        if event.keypress then r = event.keypress(k) end
+        table.insert(key_results, { key = k, passed = (r ~= false) })
+        if r ~= false and (k == KEY.TRASH or k == KEY.MENU) and menu.visible then
+            menu.visible = false
+        end
+    end
+end
+
 function run_tasks(steps)
     for _ = 1, steps do
         for i = #tasks, 1, -1 do
@@ -39,12 +54,13 @@ function run_tasks(steps)
                 if not ok then error("task error: " .. tostring(err)) end
             end
         end
+        deliver_keys()
     end
 end
 
 DEPENDS_ON = { AUTOFOCUS = 1, LIVEVIEW = 2, MOVIE_MODE = 4 }
 ICON_TYPE = { ACTION = 5 }
-KEY = { SET = 1, UP = 2, DOWN = 3, LEFT = 4, RIGHT = 5, Q = 6, MENU = 7, TRASH = 8,
+KEY = { UNPRESS_FULLSHUTTER = 0, SET = 1, UP = 2, DOWN = 3, LEFT = 4, RIGHT = 5, Q = 6, MENU = 7, TRASH = 8,
         WHEEL_UP = 9, WHEEL_DOWN = 10, WHEEL_LEFT = 11, WHEEL_RIGHT = 12, INFO = 13 }
 -- fonts: like ML, each has a height and a width(text) method
 local function font(h, cw) return { height = h, width = function(self, t) return #tostring(t) * cw end } end

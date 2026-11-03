@@ -7,7 +7,7 @@
 --   SET           switch ON/OFF items, or open the item in Magic Lantern
 --   Q             open the selected item in the Magic Lantern menu
 --   INFO (DISP)   switch to the classic Magic Lantern menu
---   MENU / Trash  close
+--   Trash / MENU  close (passed straight to Magic Lantern, so it is instant)
 --
 -- Open it from Prefs > LUMEN Menu > Open LUMEN Menu, or set
 -- "Trash button opens" to LUMEN Menu.
@@ -19,7 +19,6 @@
 --
 -- Part of LUMEN for EOS 550D. GPL v2 or later.
 
-require("keys")
 require("config")
 
 -- { ML entry name, short description, toggle? }
@@ -106,7 +105,6 @@ local TABS =
     }},
     { name = "Prefs", items = {
         { "LUMEN Boot Logo",   "Show the LUMEN logo when the camera starts.", toggle = true },
-        { "LUMEN Menu",        "This menu: open it, or make Trash open it." },
         { "Image Review",      "QuickZoom and review options." },
         { "Arrow/SET shortcuts", "Assign arrow keys to your favorite settings." },
         { "Powersave in LiveView", "Dim or turn off the screen to save battery." },
@@ -142,7 +140,7 @@ local REAL_TAB =
 {
     ["LUMEN Quick"] = "Overlay", ["LUMEN Focus"] = "Focus", ["LUMEN Presets"] = "Shoot",
     ["LUMEN Astro"] = "Shoot", ["LUMEN Timelapse"] = "Shoot",
-    ["LUMEN Boot Logo"] = "Prefs", ["LUMEN Menu"] = "Prefs",
+    ["LUMEN Boot Logo"] = "Prefs",
 }
 
 local function real_tab(tab_name, item_name)
@@ -186,6 +184,35 @@ function lmenu:refresh_tab(i)
     for k, it in ipairs(tab.items) do
         tab.values[k] = get_str(tab.name, it[1]) or ""
     end
+end
+
+
+-- Key capture while the screen is open. Trash and MENU are NOT blocked, so
+-- Magic Lantern closes its menu at once as usual (and this screen with it).
+-- Half/full shutter also pass. Everything else is queued for this screen.
+-- The previous key handler (the Trash hook) is restored only if replaced.
+local function capture_start(self)
+    self.queue, self.leaving = {}, false
+    self.old_keypress = event.keypress
+    event.keypress = function(key)
+        if key == 0 then return true end
+        if key == KEY.TRASH or key == KEY.MENU then
+            self.leaving = true
+            return true
+        end
+        if key <= KEY.UNPRESS_FULLSHUTTER then return true end
+        table.insert(self.queue, key)
+        return false
+    end
+    self.capturing = true
+end
+
+local function capture_stop(self)
+    if self.capturing then
+        event.keypress = self.old_keypress
+        self.capturing = false
+    end
+    self.queue = {}
 end
 
 local function clamp_rows(self)
@@ -244,8 +271,8 @@ function lmenu:draw()
         local it = tab.items[self.row]
         display.rect(0, FOOTER_Y, 720, 480 - FOOTER_Y, COLOR.gray(5), COLOR.gray(5))
         display.print(it[2], 20, FOOTER_Y + 8, FONT.SMALL, COLOR.gray(70), COLOR.gray(5), 680)
-        local hint = it.toggle and "SET: on/off    Q: details    MENU: close"
-                                or "SET / Q: open in Magic Lantern    MENU: close"
+        local hint = it.toggle and "SET: on/off    Q: details    Trash: close"
+                                or "SET / Q: open in Magic Lantern    Trash: close"
         display.print(hint, 20, FOOTER_Y + 34, FONT.SMALL, COLOR.gray(55), COLOR.gray(5), 680)
     end)
 end
@@ -258,12 +285,24 @@ function lmenu:open_in_ml()
     return false
 end
 
+-- switching OFF remembers the mode; switching ON restores it
+-- (Global Draw: 3 = "ON, all modes", the Magic Lantern default)
+local ON_DEFAULT = { ["Global Draw"] = 3 }
+lmenu.last_on = {}
+
 function lmenu:toggle()
     local tab = self.tabs[self.tab]
     local it = tab.items[self.row]
     local v = get_int(tab.name, it[1])
     if v == nil then return end
-    pcall(menu.set, real_tab(tab.name, it[1]), it[1], (v ~= 0) and 0 or 1)
+    local new
+    if v ~= 0 then
+        self.last_on[it[1]] = v
+        new = 0
+    else
+        new = self.last_on[it[1]] or ON_DEFAULT[it[1]] or 1
+    end
+    pcall(menu.set, real_tab(tab.name, it[1]), it[1], new)
     tab.values[self.row] = get_str(tab.name, it[1]) or ""
     beep(1, 50, 1568)
 end
@@ -271,10 +310,7 @@ end
 -- returns false to leave the LUMEN Menu
 function lmenu:handle_key(key)
     local tab = self.tabs[self.tab]
-    if key == KEY.MENU or key == KEY.TRASH then
-        self.close_ml = true
-        return false
-    elseif key == KEY.INFO then
+    if key == KEY.INFO then
         return false                                  -- classic ML menu stays open
     elseif key == KEY.UP or key == KEY.WHEEL_UP then
         self.row = self.row - 1
@@ -303,36 +339,33 @@ end
 function lmenu:run()
     if self.open then return end
     self.open = true
-    self.close_ml = false
     local ok, err = pcall(function()
         self:build()
         if #self.tabs == 0 then error("no settings found") end
         self:refresh_tab(self.tab)
         clamp_rows(self)
         menu.block(true)
-        keys:start()
+        capture_start(self)
         self:draw()
         local running = true
-        while running and menu.visible do
+        while running and menu.visible and not self.leaving do
             -- handle every key that arrived, then draw once
             local changed = false
-            local key = keys:getkey()
+            local key = table.remove(self.queue, 1)
             while key ~= nil do
                 if self:handle_key(key) == false then running = false; break end
                 changed = true
-                key = keys:getkey()
+                key = table.remove(self.queue, 1)
             end
             if running and changed then self:draw() end
             task.yield(KEY_POLL_MS)
         end
     end)
-    keys:stop()
+    capture_stop(self)
     menu.block(false)
     self.open = false
     if not ok then
         display.notify_box("LUMEN Menu: " .. tostring(err), 4000)
-    elseif self.close_ml and menu.visible then
-        menu.close()
     end
 end
 
@@ -394,4 +427,4 @@ local function monitor()
     end
 end
 
-task.create(monitor)
+task.create(monitor, 0x1c, 0x8000)   -- 32 KB stack is plenty for this loop

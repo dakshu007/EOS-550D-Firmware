@@ -2,14 +2,12 @@
 -- Quick toggles: one screen with the overlays you switch most often.
 --
 -- Open it from Overlay > LUMEN Quick (tip: star it so it appears in My Menu).
--- Arrows move, SET toggles, Q / MENU / Trash closes.
+-- Arrows move, SET toggles, Q closes, Trash / MENU close the menu.
 --
 -- Only one task (the screen loop) ever calls task.yield: ML does not allow
 -- task.yield from two tasks of the same script at once.
 --
 -- Part of LUMEN for EOS 550D. GPL v2 or later.
-
-require("keys")
 
 -- { label, ML menu, ML entry }
 local TILES =
@@ -51,12 +49,53 @@ local function tile_value(t)
     return v:match("^([^,]+)") or v
 end
 
+-- switching OFF remembers the mode; switching ON restores it
+-- (Global Draw: 3 = "ON, all modes", the Magic Lantern default)
+local ON_DEFAULT = { ["Global Draw"] = 3 }
+lquick.last_on = {}
+
 local function toggle(t)
-    local on = tile_state(t)
-    if on == nil then return false end
-    local ok, result = pcall(menu.set, t[2], t[3], on and 0 or 1)
+    local ok0, v = pcall(menu.get, t[2], t[3], 0)
+    if not ok0 or v == nil then return false end
+    local new
+    if v ~= 0 then
+        lquick.last_on[t[3]] = v
+        new = 0
+    else
+        new = lquick.last_on[t[3]] or ON_DEFAULT[t[3]] or 1
+    end
+    local ok, result = pcall(menu.set, t[2], t[3], new)
     return ok and result ~= nil
 end
+
+-- Key capture while the screen is open. Trash and MENU are NOT blocked, so
+-- Magic Lantern closes its menu at once as usual (and this screen with it).
+-- Half/full shutter also pass. Everything else is queued for this screen.
+-- The previous key handler is restored only if it was replaced.
+local function capture_start(self)
+    self.queue, self.leaving = {}, false
+    self.old_keypress = event.keypress
+    event.keypress = function(key)
+        if key == 0 then return true end
+        if key == KEY.TRASH or key == KEY.MENU then
+            self.leaving = true
+            return true
+        end
+        if key <= KEY.UNPRESS_FULLSHUTTER then return true end
+        table.insert(self.queue, key)
+        return false
+    end
+    self.capturing = true
+end
+
+local function capture_stop(self)
+    if self.capturing then
+        event.keypress = self.old_keypress
+        self.capturing = false
+    end
+    self.queue = {}
+end
+
 
 function lquick:refresh(i)
     local from, to = i or 1, i or #TILES
@@ -92,13 +131,13 @@ function lquick:draw()
             display.print(text, x + 14, y + TILE_H - 44, FONT.MED, fg, bg, TILE_W - 28)
         end
 
-        display.print("Arrows: move    SET: toggle    Q / MENU: close",
+        display.print("Arrows: move    SET: toggle    Q: back    Trash: close",
             MARGIN, 420, FONT.MED, COLOR.gray(60), COLOR.BLACK)
     end)
 end
 
 function lquick:handle_key(key)
-    if key == KEY.Q or key == KEY.MENU or key == KEY.TRASH then
+    if key == KEY.Q then
         return false
     elseif key == KEY.LEFT or key == KEY.WHEEL_LEFT then
         self.sel = (self.sel - 2) % #TILES + 1
@@ -121,23 +160,23 @@ function lquick:run()
     local ok, err = pcall(function()
         self:refresh()
         menu.block(true)
-        keys:start()
+        capture_start(self)
         self:draw()
         local running = true
-        while running and menu.visible do
+        while running and menu.visible and not self.leaving do
             -- handle every key that arrived, then draw once
             local changed = false
-            local key = keys:getkey()
+            local key = table.remove(self.queue, 1)
             while key ~= nil do
                 if self:handle_key(key) == false then running = false; break end
                 changed = true
-                key = keys:getkey()
+                key = table.remove(self.queue, 1)
             end
             if running and changed then self:draw() end
             task.yield(KEY_POLL_MS)
         end
     end)
-    keys:stop()
+    capture_stop(self)
     menu.block(false)
     self.open = false
     if not ok then
@@ -153,6 +192,6 @@ lquick_menu = menu.new
     help2  = "Tip: star it (Prefs > Customize Menus) to put it in My Menu.",
     icon_type = ICON_TYPE.ACTION,
     select = function(this)
-        task.create(function() lquick:run() end)
+        task.create(function() lquick:run() end, 0x1c, 0x8000)
     end,
 }

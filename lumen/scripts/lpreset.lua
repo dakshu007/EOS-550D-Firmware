@@ -13,7 +13,7 @@ require("config")
 -- ML menu settings per preset: { menu, entry, value }
 local OVERLAYS_ON =
 {
-    { "Overlay", "Global Draw", 1 },
+    { "Overlay", "Global Draw", 3 },   -- 3 = "ON, all modes"
     { "Overlay", "Zebras",      1 },
     { "Overlay", "Focus Peak",  1 },
     { "Overlay", "Spotmeter",   1 },
@@ -27,7 +27,7 @@ local PRESETS =
         help = "Zebras, peaking, histogram, spotmeter. Exposure untouched.",
         menu =
         {
-            { "Overlay", "Global Draw", 1 },
+            { "Overlay", "Global Draw", 3 },   -- 3 = "ON, all modes"
             { "Overlay", "Zebras",      1 },
             { "Overlay", "Focus Peak",  1 },
             { "Overlay", "Magic Zoom",  0 },
@@ -55,7 +55,7 @@ local PRESETS =
         help = "Movie: 1/50 s in M, zebras, peaking, auto-restart, logging.",
         menu =
         {
-            { "Overlay", "Global Draw", 1 },
+            { "Overlay", "Global Draw", 3 },   -- 3 = "ON, all modes"
             { "Overlay", "Zebras",      1 },
             { "Overlay", "Focus Peak",  1 },
             { "Overlay", "Magic Zoom",  0 },
@@ -70,7 +70,7 @@ local PRESETS =
         help = "M mode: ISO 1600, 20 s, widest aperture. Magic Zoom for focus.",
         menu =
         {
-            { "Overlay", "Global Draw", 1 },
+            { "Overlay", "Global Draw", 3 },   -- 3 = "ON, all modes"
             { "Overlay", "Zebras",      0 },
             { "Overlay", "Focus Peak",  0 },
             { "Overlay", "Magic Zoom",  1 },

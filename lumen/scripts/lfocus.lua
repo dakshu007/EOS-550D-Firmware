@@ -179,4 +179,4 @@ local function monitor()
     end
 end
 
-task.create(monitor)
+task.create(monitor, 0x1c, 0x8000)   -- 32 KB stack is plenty for this loop
